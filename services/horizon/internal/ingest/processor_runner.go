@@ -300,11 +300,16 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		err = errors.Wrap(err, "Error while checking for supported protocol version")
 		return
 	}
-
 	groupTransactionFilterers := s.buildTransactionFilterer()
+	unfilteredProcessors := processors.NewTxSubmissionResultProcessor(s.historyQ, transactionReader.GetHeader())
 	groupTransactionProcessors := s.buildTransactionProcessor(
 		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
-	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionFilterers, groupTransactionProcessors, transactionReader)
+	err = processors.StreamLedgerTransactions(s.ctx,
+		groupTransactionFilterers,
+		unfilteredProcessors,
+		groupTransactionProcessors,
+		transactionReader,
+	)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return

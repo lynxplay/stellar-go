@@ -21,12 +21,12 @@ const (
 type QTxSubmissionResult interface {
 	TxSubGetResult(ctx context.Context, hash string) (Transaction, error)
 	TxSubGetResults(ctx context.Context, hashes []string) ([]Transaction, error)
-	TxSubSetResult(ctx context.Context, hash string, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
+	TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
 	TxSubInit(ctx context.Context, hash string) error
 	TxSubDeleteOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
 
-// TxSubGetResult gets the result of a transaction submitted
+// TxSubGetResult gets the result of a submitted transaction
 func (q *Q) TxSubGetResult(ctx context.Context, hash string) (Transaction, error) {
 	sql := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
@@ -43,6 +43,7 @@ func (q *Q) TxSubGetResult(ctx context.Context, hash string) (Transaction, error
 	return tx, err
 }
 
+// TxSubGetResult gets the result of multiple submitted transactions
 func (q *Q) TxSubGetResults(ctx context.Context, hashes []string) ([]Transaction, error) {
 	sql := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
@@ -64,7 +65,7 @@ func (q *Q) TxSubGetResults(ctx context.Context, hashes []string) ([]Transaction
 }
 
 // TxSubSetResult sets the result of a submitted transaction
-func (q *Q) TxSubSetResult(ctx context.Context, hash string, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
+func (q *Q) TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
 	row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
 	if err != nil {
 		return err
@@ -75,7 +76,7 @@ func (q *Q) TxSubSetResult(ctx context.Context, hash string, transaction ingest.
 	}
 	b, err := json.Marshal(tx)
 	sql := sq.Update(txSubResultTableName).
-		Where(sq.Eq{txSubResultHashColumnName: hash}).
+		Where(sq.Eq{txSubResultHashColumnName: row.TransactionHash}).
 		SetMap(map[string]interface{}{txSubResultColumnName: b})
 	_, err = q.Exec(ctx, sql)
 	return err

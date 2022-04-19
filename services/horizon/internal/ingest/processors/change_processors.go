@@ -23,6 +23,7 @@ type LedgerTransactionFilterer interface {
 func StreamLedgerTransactions(
 	ctx context.Context,
 	txFilterer LedgerTransactionFilterer,
+	unfilteredTxProcessor LedgerTransactionProcessor,
 	txProcessor LedgerTransactionProcessor,
 	reader *ingest.LedgerTransactionReader,
 ) error {
@@ -39,6 +40,13 @@ func StreamLedgerTransactions(
 			return errors.Wrapf(
 				err,
 				"could not filter transaction %v",
+				tx.Index,
+			)
+		}
+		if err = unfilteredTxProcessor.ProcessTransaction(ctx, tx); err != nil {
+			return errors.Wrapf(
+				err,
+				"could not process transaction %v",
 				tx.Index,
 			)
 		}

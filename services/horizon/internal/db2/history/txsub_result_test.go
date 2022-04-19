@@ -3,11 +3,13 @@ package history
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"testing"
 	"time"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/xdr"
 )
 
 func TestTxSubResult(t *testing.T) {
@@ -15,26 +17,6 @@ func TestTxSubResult(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-
-	hash := "foobar"
-	ctx := context.Background()
-
-	_, err := q.TxSubGetResult(ctx, hash)
-	tt.Assert.Error(err)
-	tt.Assert.Equal(err, sql.ErrNoRows)
-	transactions, err := q.TxSubGetResults(ctx, []string{hash})
-	tt.Assert.NoError(err)
-	tt.Assert.Len(transactions, 0)
-
-	tt.Assert.NoError(q.TxSubInit(ctx, hash))
-
-	_, err = q.TxSubGetResult(ctx, hash)
-	tt.Assert.Error(err)
-	tt.Assert.Equal(err, sql.ErrNoRows)
-
-	transactions, err = q.TxSubGetResults(ctx, []string{hash})
-	tt.Assert.NoError(err)
-	tt.Assert.Len(transactions, 0)
 
 	sequence := uint32(123)
 	toInsert := buildLedgerTransaction(tt.T, testTransaction{
@@ -71,7 +53,36 @@ func TestTxSubResult(t *testing.T) {
 		},
 	}
 
-	tt.Assert.NoError(q.TxSubSetResult(ctx, hash, toInsert, sequence, ledgerCloseTime))
+	hash := hex.EncodeToString(toInsert.Result.TransactionHash[:])
+	ctx := context.Background()
+
+	_, err := q.TxSubGetResult(ctx, hash)
+	tt.Assert.Error(err)
+	tt.Assert.Equal(err, sql.ErrNoRows)
+	transactions, err := q.TxSubGetResults(ctx, []string{hash})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
+
+	tt.Assert.NoError(q.TxSubInit(ctx, hash))
+
+	_, err = q.TxSubGetResult(ctx, hash)
+	tt.Assert.Error(err)
+	tt.Assert.Equal(err, sql.ErrNoRows)
+
+	transactions, err = q.TxSubGetResults(ctx, []string{hash})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
+
+	// Trying to set the result of a transaction which wasn't initialized
+	// doesn't fail
+	// TODO: should it?
+	toInsertFail := toInsert
+	toInsertFail.Result.TransactionHash = xdr.Hash{0x1, 0x2, 0x3, 0x4}
+	err = q.TxSubSetResult(ctx, toInsertFail, sequence, ledgerCloseTime)
+	tt.Assert.NoError(err)
+
+	// Now insert the valid transaction
+	tt.Assert.NoError(q.TxSubSetResult(ctx, toInsert, sequence, ledgerCloseTime))
 	transaction, err := q.TxSubGetResult(ctx, hash)
 	tt.Assert.NoError(err)
 

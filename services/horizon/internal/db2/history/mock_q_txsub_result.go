@@ -18,9 +18,8 @@ func (m MockQTxSubmissionResult) TxSubGetResult(ctx context.Context, hash string
 	return a.Get(0).(Transaction), a.Error(1)
 }
 
-func (m MockQTxSubmissionResult) TxSubSetResult(
-	ctx context.Context, hash string, transaction ingest.LedgerTransaction, sequence uint32, ledgerCloseTime time.Time) error {
-	a := m.Called(ctx, hash, transaction, sequence)
+func (m MockQTxSubmissionResult) TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
+	a := m.Called(ctx, transaction, sequence)
 	return a.Error(0)
 }
 
