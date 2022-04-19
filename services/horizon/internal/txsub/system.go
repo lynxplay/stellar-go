@@ -18,7 +18,7 @@ type HorizonDB interface {
 	history.QTxSubmissionResult
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
 	BeginTx(*sql.TxOptions) error
-	Rollback() error
+	Commit() error
 	NoRows(error) bool
 }
 
@@ -151,7 +151,7 @@ func (sys *System) Submit(
 		}
 
 		// initialize row where to wait for results
-		if err := sys.DB(ctx).TxSubInit(ctx, hash); err != nil {
+		if err := db.TxSubInit(ctx, hash); err != nil {
 			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}
@@ -314,13 +314,14 @@ func (sys *System) Tick(ctx context.Context) {
 	db := sys.DB(ctx)
 	options := &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
+		// we need to delete old transaction submission entries
+		ReadOnly: false,
 	}
 	if err := db.BeginTx(options); err != nil {
 		logger.WithError(err).Error("could not start repeatable read transaction for txsub tick")
 		return
 	}
-	defer db.Rollback()
+	defer db.Commit()
 
 	addys := sys.SubmissionQueue.Addresses()
 	if len(addys) > 0 {

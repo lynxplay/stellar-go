@@ -36,7 +36,7 @@ func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
 	return args.Error(0)
 }
 
-func (m *mockDBQ) Rollback() error {
+func (m *mockDBQ) Commit() error {
 	args := m.Called()
 	return args.Error(0)
 }
