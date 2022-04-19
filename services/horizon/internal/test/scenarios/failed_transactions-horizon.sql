@@ -1034,6 +1034,19 @@ ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_acc
 ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
 ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
 
+-- migration 54
+CREATE TABLE txsub_results (
+                               transaction_hash varchar(64) NOT NULL UNIQUE,
+                               tx_result        text, -- serialized history.Transaction
+                               submitted_at     timestamp NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO txsub_results
+VALUES (
+    'aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf',
+    '{ "TxResult": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=" }',
+    '2019-06-03 18:28:47.032496+02');
+
 --
 -- PostgreSQL database dump complete
 --
