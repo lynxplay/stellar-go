@@ -139,7 +139,7 @@ func (sys *System) Submit(
 	})
 
 	select {
-	case err := <-seq:
+	case err = <-seq:
 		if err == sequence.ErrBadSequence {
 			// convert the internal only ErrBadSequence into the FailedTransactionError
 			err = ErrBadSequence
