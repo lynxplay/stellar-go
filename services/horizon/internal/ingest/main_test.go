@@ -244,6 +244,7 @@ type mockDBQ struct {
 	history.MockQSigners
 	history.MockQTransactions
 	history.MockQTrustLines
+	history.MockQTxSubmissionResult
 }
 
 func (m *mockDBQ) Begin() error {

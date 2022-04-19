@@ -18,7 +18,7 @@ INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
 
 CREATE TABLE txsub_results (
     transaction_hash varchar(64) NOT NULL UNIQUE,
-    tx_result        text,
+    tx_result        text, -- serialized history.Transaction
     submitted_at     timestamp NOT NULL DEFAULT NOW()
 );
 

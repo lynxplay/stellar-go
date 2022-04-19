@@ -2,8 +2,9 @@ package history
 
 import (
 	"context"
+	"time"
 
-	"github.com/guregu/null"
+	"github.com/stellar/go/ingest"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -12,13 +13,14 @@ type MockQTxSubmissionResult struct {
 	mock.Mock
 }
 
-func (m MockQTxSubmissionResult) TxSubGetResult(ctx context.Context, hash string) (null.String, error) {
+func (m MockQTxSubmissionResult) TxSubGetResult(ctx context.Context, hash string) (*Transaction, error) {
 	a := m.Called(ctx, hash)
-	return a.Get(0).(null.String), a.Error(1)
+	return a.Get(0).(*Transaction), a.Error(1)
 }
 
-func (m MockQTxSubmissionResult) TxSubSetResult(ctx context.Context, hash string, result string) error {
-	a := m.Called(ctx, hash, result)
+func (m MockQTxSubmissionResult) TxSubSetResult(
+	ctx context.Context, hash string, transaction ingest.LedgerTransaction, sequence uint32, ledgerCloseTime time.Time) error {
+	a := m.Called(ctx, hash, transaction, sequence)
 	return a.Error(0)
 }
 
@@ -27,7 +29,7 @@ func (m MockQTxSubmissionResult) TxSubInit(ctx context.Context, hash string) err
 	return a.Error(0)
 }
 
-func (m MockQTxSubmissionResult) TxSubDeleteOlderThan(ctx context.Context, howOldInSeconds uint) error {
+func (m MockQTxSubmissionResult) TxSubDeleteOlderThan(ctx context.Context, howOldInSeconds uint) (int64, error) {
 	a := m.Called(ctx, howOldInSeconds)
-	return a.Error(0)
+	return a.Get(0).(int64), a.Error(1)
 }

@@ -2,9 +2,13 @@ package history
 
 import (
 	"context"
+	"encoding/json"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -16,28 +20,43 @@ const (
 
 // QTxSubmissionResult defines transaction submission result queries.
 type QTxSubmissionResult interface {
-	TxSubGetResult(ctx context.Context, hash string) (null.String, error)
-	TxSubSetResult(ctx context.Context, hash string, result string) error
+	TxSubGetResult(ctx context.Context, hash string) (*Transaction, error)
+	TxSubSetResult(ctx context.Context, hash string, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
 	TxSubInit(ctx context.Context, hash string) error
 	TxSubDeleteOlderThan(ctx context.Context, howOldInSeconds uint) (int64, error)
 }
 
 // TxSubGetResult gets the result of a transaction submitted
-func (q *Q) TxSubGetResult(ctx context.Context, hash string) (null.String, error) {
+func (q *Q) TxSubGetResult(ctx context.Context, hash string) (*Transaction, error) {
 	sql := sq.Select(txSubResultColumnName).
 		From(txSubTableName).
 		Where(sq.Eq{txSubHashColumnName: hash})
 	var result null.String
 	err := q.Get(ctx, &result, sql)
-	return result, err
+	if err != nil || result.IsZero() {
+		return nil, err
+	}
+
+	var tx Transaction
+	err = json.Unmarshal([]byte(result.String), &tx)
+	return &tx, err
 }
 
 // TxSubSetResult sets the result of a submitted transaction
-func (q *Q) TxSubSetResult(ctx context.Context, hash string, result string) error {
+func (q *Q) TxSubSetResult(ctx context.Context, hash string, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
+	row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
+	if err != nil {
+		return err
+	}
+	tx := Transaction{
+		LedgerCloseTime:          ledgerClosetime,
+		TransactionWithoutLedger: row,
+	}
+	b, err := json.Marshal(tx)
 	sql := sq.Update(txSubTableName).
 		Where(sq.Eq{txSubHashColumnName: hash}).
-		SetMap(map[string]interface{}{txSubResultColumnName: result})
-	_, err := q.Exec(ctx, sql)
+		SetMap(map[string]interface{}{txSubResultColumnName: b})
+	_, err = q.Exec(ctx, sql)
 	return err
 }
 
