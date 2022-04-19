@@ -75,6 +75,9 @@ func (q *Q) TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransac
 		TransactionWithoutLedger: row,
 	}
 	b, err := json.Marshal(tx)
+	if err != nil {
+		return err
+	}
 	sql := sq.Update(txSubResultTableName).
 		Where(sq.Eq{txSubResultHashColumnName: row.TransactionHash}).
 		SetMap(map[string]interface{}{txSubResultColumnName: b})
