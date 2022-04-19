@@ -15,9 +15,7 @@ import (
 )
 
 type HorizonDB interface {
-	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
-	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
-	TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
+	history.QTxSubmissionResult
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
 	BeginTx(*sql.TxOptions) error
 	Rollback() error
@@ -152,6 +150,11 @@ func (sys *System) Submit(
 			return
 		}
 
+		// initialize row where to wait for results
+		if err := sys.DB(ctx).TxSubInit(ctx, hash); err != nil {
+			sys.finish(ctx, hash, response, Result{Err: err})
+			return
+		}
 		sr := sys.submitOnce(ctx, rawTx)
 		sys.updateTransactionTypeMetrics(envelope)
 
@@ -333,20 +336,7 @@ func (sys *System) Tick(ctx context.Context) {
 	pending := sys.Pending.Pending(ctx)
 
 	if len(pending) > 0 {
-		latestLedger, err := db.GetLatestHistoryLedger(ctx)
-		if err != nil {
-			logger.WithError(err).Error("error getting latest history ledger")
-			return
-		}
-
-		// In Tick we only check txs in a queue so those which did not have results before Tick
-		// so we check for them in the last 5 mins of ledgers: 60.
-		sinceLedgerSeq := int32(latestLedger) - 60
-		if sinceLedgerSeq < 0 {
-			sinceLedgerSeq = 0
-		}
-
-		txs, err := db.TransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
+		txs, err := db.TxSubGetResults(ctx, pending)
 		if err != nil && !db.NoRows(err) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return
@@ -383,6 +373,11 @@ func (sys *System) Tick(ctx context.Context) {
 				logger.WithStack(err).Error(err)
 			}
 		}
+	}
+
+	if _, err := db.TxSubDeleteOlderThan(ctx, uint64(sys.SubmissionTimeout/time.Second)); err != nil {
+		logger.WithStack(err).Error(err)
+		return
 	}
 
 	stillOpen, err := sys.Pending.Clean(ctx, sys.SubmissionTimeout)

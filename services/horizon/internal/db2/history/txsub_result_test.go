@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -18,11 +19,22 @@ func TestTxSubResult(t *testing.T) {
 	hash := "foobar"
 	ctx := context.Background()
 
+	_, err := q.TxSubGetResult(ctx, hash)
+	tt.Assert.Error(err)
+	tt.Assert.Equal(err, sql.ErrNoRows)
+	transactions, err := q.TxSubGetResults(ctx, []string{hash})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
+
 	tt.Assert.NoError(q.TxSubInit(ctx, hash))
 
-	transactionPtr, err := q.TxSubGetResult(ctx, hash)
+	_, err = q.TxSubGetResult(ctx, hash)
+	tt.Assert.Error(err)
+	tt.Assert.Equal(err, sql.ErrNoRows)
+
+	transactions, err = q.TxSubGetResults(ctx, []string{hash})
 	tt.Assert.NoError(err)
-	tt.Assert.Nil(transactionPtr)
+	tt.Assert.Len(transactions, 0)
 
 	sequence := uint32(123)
 	toInsert := buildLedgerTransaction(tt.T, testTransaction{
@@ -60,10 +72,8 @@ func TestTxSubResult(t *testing.T) {
 	}
 
 	tt.Assert.NoError(q.TxSubSetResult(ctx, hash, toInsert, sequence, ledgerCloseTime))
-	transactionPtr, err = q.TxSubGetResult(ctx, hash)
+	transaction, err := q.TxSubGetResult(ctx, hash)
 	tt.Assert.NoError(err)
-	tt.Assert.NotNil(transactionPtr)
-	transaction := *transactionPtr
 
 	// ignore created time and updated time
 	transaction.CreatedAt = expected.CreatedAt
@@ -76,6 +86,10 @@ func TestTxSubResult(t *testing.T) {
 	tt.Assert.True(closedAt.Equal(expected.LedgerCloseTime))
 	tt.Assert.Equal(transaction, expected)
 
+	transactions, err = q.TxSubGetResults(ctx, []string{hash})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 1)
+
 	time.Sleep(2 * time.Second)
 	rowsAffected, err := q.TxSubDeleteOlderThan(ctx, 1)
 	tt.Assert.NoError(err)
@@ -83,4 +97,9 @@ func TestTxSubResult(t *testing.T) {
 
 	_, err = q.TxSubGetResult(ctx, hash)
 	tt.Assert.Error(err)
+	tt.Assert.Equal(err, sql.ErrNoRows)
+
+	transactions, err = q.TxSubGetResults(ctx, []string{hash})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(transactions, 0)
 }
