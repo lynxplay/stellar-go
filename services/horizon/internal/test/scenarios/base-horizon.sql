@@ -1519,10 +1519,16 @@ ALTER TABLE history_trades DROP offer_id,
 CREATE INDEX htrd_by_base_liquidity_pool_id ON history_trades USING BTREE(base_liquidity_pool_id);
 CREATE INDEX htrd_by_counter_liquidity_pool_id ON history_trades USING BTREE(counter_liquidity_pool_id);
 
--- mgiration 51
+-- migration 51
 DROP INDEX IF EXISTS by_account;
 DROP INDEX IF EXISTS by_fee_account;
 
+-- migration 54
+CREATE TABLE txsub_results (
+    transaction_hash varchar(64) NOT NULL UNIQUE,
+    tx_result        text, -- serialized history.Transaction
+    submitted_at     timestamp NOT NULL DEFAULT NOW()
+);
 
 --
 -- PostgreSQL database dump complete
