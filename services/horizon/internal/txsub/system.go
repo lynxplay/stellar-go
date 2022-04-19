@@ -151,7 +151,7 @@ func (sys *System) Submit(
 		}
 
 		// initialize row where to wait for results
-		if err := db.TxSubInit(ctx, hash); err != nil {
+		if err := db.InitEmptyTxSubmissionResult(ctx, hash); err != nil {
 			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}
@@ -337,7 +337,7 @@ func (sys *System) Tick(ctx context.Context) {
 	pending := sys.Pending.Pending(ctx)
 
 	if len(pending) > 0 {
-		txs, err := db.TxSubGetResults(ctx, pending)
+		txs, err := db.GetTxSubmissionResults(ctx, pending)
 		if err != nil && !db.NoRows(err) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return
@@ -376,7 +376,7 @@ func (sys *System) Tick(ctx context.Context) {
 		}
 	}
 
-	if _, err := db.TxSubDeleteOlderThan(ctx, uint64(sys.SubmissionTimeout/time.Second)); err != nil {
+	if _, err := db.DeleteTxSubmissionResultsOlderThan(ctx, uint64(sys.SubmissionTimeout/time.Second)); err != nil {
 		logger.WithStack(err).Error(err)
 		return
 	}

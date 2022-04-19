@@ -19,15 +19,15 @@ const (
 
 // QTxSubmissionResult defines transaction submission result queries.
 type QTxSubmissionResult interface {
-	TxSubGetResult(ctx context.Context, hash string) (Transaction, error)
-	TxSubGetResults(ctx context.Context, hashes []string) ([]Transaction, error)
-	TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
-	TxSubInit(ctx context.Context, hash string) error
-	TxSubDeleteOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
+	GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error)
+	GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error)
+	SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
+	InitEmptyTxSubmissionResult(ctx context.Context, hash string) error
+	DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
 
 // TxSubGetResult gets the result of a submitted transaction
-func (q *Q) TxSubGetResult(ctx context.Context, hash string) (Transaction, error) {
+func (q *Q) GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error) {
 	sql := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
 		Where(sq.NotEq{txSubResultColumnName: nil}).
@@ -44,7 +44,7 @@ func (q *Q) TxSubGetResult(ctx context.Context, hash string) (Transaction, error
 }
 
 // TxSubGetResult gets the result of multiple submitted transactions
-func (q *Q) TxSubGetResults(ctx context.Context, hashes []string) ([]Transaction, error) {
+func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error) {
 	sql := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
 		Where(sq.NotEq{txSubResultColumnName: nil}).
@@ -65,7 +65,7 @@ func (q *Q) TxSubGetResults(ctx context.Context, hashes []string) ([]Transaction
 }
 
 // TxSubSetResult sets the result of a submitted transaction
-func (q *Q) TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
+func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
 	row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (q *Q) TxSubSetResult(ctx context.Context, transaction ingest.LedgerTransac
 }
 
 // TxSubInit initializes a submitted transaction
-func (q *Q) TxSubInit(ctx context.Context, hash string) error {
+func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string) error {
 	sql := sq.Insert(txSubResultTableName).
 		Columns(txSubResultHashColumnName).
 		Values(hash)
@@ -95,7 +95,7 @@ func (q *Q) TxSubInit(ctx context.Context, hash string) error {
 }
 
 // TxSubDeleteOlderThan deletes entries older than certain duration
-func (q *Q) TxSubDeleteOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
+func (q *Q) DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
 	sql := sq.Delete(txSubResultTableName).
 		Where(sq.Expr("now() >= ("+txSubResultSubmittedAtColumnName+" + interval '1 second' * ?)", howOldInSeconds))
 	result, err := q.Exec(ctx, sql)

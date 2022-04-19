@@ -36,7 +36,7 @@ func (p *TxSubmissionResultProcessor) Commit(ctx context.Context) error {
 	closeTime := time.Unix(int64(p.ledger.Header.ScpValue.CloseTime), 0).UTC()
 	for _, tx := range p.txs {
 		// TODO: do all of this at once
-		if err := p.txSubmissionResultQ.TxSubSetResult(ctx, tx, seq, closeTime); err != nil {
+		if err := p.txSubmissionResultQ.SetTxSubmissionResult(ctx, tx, seq, closeTime); err != nil {
 			return err
 		}
 	}

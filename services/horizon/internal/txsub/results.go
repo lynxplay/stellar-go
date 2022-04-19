@@ -10,7 +10,7 @@ import (
 )
 
 func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Transaction, error) {
-	hr, err := db.TxSubGetResult(ctx, hash)
+	hr, err := db.GetTxSubmissionResult(ctx, hash)
 	if err != nil {
 		if db.NoRows(err) {
 			return history.Transaction{}, ErrNoResults
