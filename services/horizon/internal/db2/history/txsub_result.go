@@ -88,9 +88,8 @@ func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.Ledger
 	return err
 }
 
-// TxSubInit initializes a submitted transaction
+// TxSubInit initializes a submitted transaction, idempotent, doesn't matter if row with hash already exists.
 func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string) error {
-	// TODO: I don't think we should error if there was already an entry with that hash
 	sql := sq.Insert(txSubResultTableName).
 		Columns(txSubResultHashColumnName).
 		Values(hash).
