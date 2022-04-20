@@ -776,6 +776,9 @@ INSERT INTO gorp_migrations VALUES ('48_rebuild_trade_aggregations.sql', '2021-1
 INSERT INTO gorp_migrations VALUES ('49_add_brin_index_trade_aggregations.sql', '2021-12-02 01:33:33.43274+00');
 INSERT INTO gorp_migrations VALUES ('50_liquidity_pools.sql', '2021-12-02 01:33:33.471893+00');
 INSERT INTO gorp_migrations VALUES ('51_remove_ht_unused_indexes.sql', '2021-12-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('52_add_trade_type_index.sql', '2021-12-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('53_add_trades_rounding_slippage.sql', '2021-12-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('54_tx_preconditions_and_account_fields.sql', '2021-12-02 01:33:33.47903+00');
 INSERT INTO gorp_migrations VALUES ('55_filter_rules.sql', '2021-12-02 01:33:33.47903+00');
 
 
@@ -1528,7 +1531,30 @@ CREATE INDEX htrd_by_counter_liquidity_pool_id ON history_trades USING BTREE(cou
 DROP INDEX IF EXISTS by_account;
 DROP INDEX IF EXISTS by_fee_account;
 
+-- migration 52
+ALTER TABLE history_trades ADD trade_type smallint DEFAULT 1 CHECK(trade_type > 0);
+UPDATE history_trades SET trade_type = 2 WHERE base_liquidity_pool_id IS NOT NULL OR counter_liquidity_pool_id IS NOT NULL;
+CREATE INDEX htrd_by_trade_type ON history_trades USING BTREE(trade_type, history_operation_id, "order");
+
+-- migration 53
+ALTER TABLE history_trades ADD rounding_slippage bigint;
+ALTER TABLE history_trades ADD base_is_exact boolean;
+
 -- migration 54
+ALTER TABLE history_transactions ADD ledger_bounds                   int8range;     -- xdr.Uint32s
+ALTER TABLE history_transactions ADD min_account_sequence            bigint;        -- xdr.SequenceNumber -> int64
+ALTER TABLE history_transactions ADD min_account_sequence_age        varchar(20);   -- xdr.TimePoint -> uint64 -> longest uint64 number
+ALTER TABLE history_transactions ADD min_account_sequence_ledger_gap bigint;        -- xdr.Int32
+ALTER TABLE history_transactions ADD extra_signers                   text[];
+
+ALTER TABLE accounts ADD sequence_ledger integer;
+ALTER TABLE accounts ADD sequence_time bigint;
+
+-- adjust it *ever again*.
+ALTER TABLE accounts_signers
+    ALTER COLUMN signer TYPE text;
+
+-- migration 55
 CREATE TABLE txsub_results (
     transaction_hash varchar(64) NOT NULL UNIQUE,
     tx_result        text, -- serialized history.Transaction
