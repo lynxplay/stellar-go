@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -89,7 +90,8 @@ func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.Ledger
 func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string) error {
 	sql := sq.Insert(txSubResultTableName).
 		Columns(txSubResultHashColumnName).
-		Values(hash)
+		Values(hash).
+		Suffix(fmt.Sprintf("ON CONFLICT (%s) DO NOTHING", txSubResultHashColumnName))
 	_, err := q.Exec(ctx, sql)
 	return err
 }

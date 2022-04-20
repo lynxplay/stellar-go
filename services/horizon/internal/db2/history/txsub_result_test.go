@@ -12,6 +12,21 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func TestInitIdempotent(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+	hash := xdr.Hash{0x1, 0x2, 0x3, 0x4}
+
+	// first invocation, creates row
+	ctx := context.Background()
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString()))
+
+	// nth invocations on same hash, should be idempotent, if already a row, no-op, no error
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString()))
+}
+
 func TestTxSubResult(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
