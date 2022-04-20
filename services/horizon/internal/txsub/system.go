@@ -385,6 +385,8 @@ func (sys *System) Tick(ctx context.Context) {
 		}
 	}
 
+	// TODO: we shouldn't do this on every tick, we should do it every sys.SubmissionTimeout/time.Second
+	//       at the very most
 	if _, err := db.DeleteTxSubmissionResultsOlderThan(ctx, uint64(sys.SubmissionTimeout/time.Second)); err != nil {
 		logger.WithStack(err).Error(err)
 		return
