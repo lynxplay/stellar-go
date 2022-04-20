@@ -28,6 +28,7 @@ type QTxSubmissionResult interface {
 
 // TxSubGetResult gets the result of a submitted transaction
 func (q *Q) GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error) {
+	// TODO: Shouldn't we just use GetTxSubmissionResults() instead of ducplicationg code ?
 	sql := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
 		Where(sq.NotEq{txSubResultColumnName: nil}).
@@ -81,12 +82,14 @@ func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.Ledger
 	sql := sq.Update(txSubResultTableName).
 		Where(sq.Eq{txSubResultHashColumnName: row.TransactionHash}).
 		SetMap(map[string]interface{}{txSubResultColumnName: b})
+	// TODO: we should probably return the number of updated rows
 	_, err = q.Exec(ctx, sql)
 	return err
 }
 
 // TxSubInit initializes a submitted transaction
 func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string) error {
+	// TODO: I don't think we should error if there was already an entry with that hash
 	sql := sq.Insert(txSubResultTableName).
 		Columns(txSubResultHashColumnName).
 		Values(hash)

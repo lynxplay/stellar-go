@@ -160,6 +160,7 @@ func (sys *System) Submit(
 		}
 
 		// initialize row where to wait for results
+		// TODO: in the case of feebump transactions shouldn't we initialize the result for the outer and inner transactions?
 		if err := db.InitEmptyTxSubmissionResult(ctx, hash); err != nil {
 			sys.finish(ctx, hash, response, Result{Err: err})
 			return
