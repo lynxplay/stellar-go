@@ -1536,16 +1536,7 @@ ALTER TABLE history_trades ADD trade_type smallint DEFAULT 1 CHECK(trade_type > 
 UPDATE history_trades SET trade_type = 2 WHERE base_liquidity_pool_id IS NOT NULL OR counter_liquidity_pool_id IS NOT NULL;
 CREATE INDEX htrd_by_trade_type ON history_trades USING BTREE(trade_type, history_operation_id, "order");
 
--- migration 53
-ALTER TABLE history_trades ADD rounding_slippage bigint;
-ALTER TABLE history_trades ADD base_is_exact boolean;
-
 -- migration 54
-ALTER TABLE history_transactions ADD ledger_bounds                   int8range;     -- xdr.Uint32s
-ALTER TABLE history_transactions ADD min_account_sequence            bigint;        -- xdr.SequenceNumber -> int64
-ALTER TABLE history_transactions ADD min_account_sequence_age        varchar(20);   -- xdr.TimePoint -> uint64 -> longest uint64 number
-ALTER TABLE history_transactions ADD min_account_sequence_ledger_gap bigint;        -- xdr.Int32
-ALTER TABLE history_transactions ADD extra_signers                   text[];
 
 ALTER TABLE accounts ADD sequence_ledger integer;
 ALTER TABLE accounts ADD sequence_time bigint;
@@ -1555,6 +1546,23 @@ ALTER TABLE accounts_signers
     ALTER COLUMN signer TYPE text;
 
 -- migration 55
+
+CREATE TABLE account_filter_rules (
+                                      enabled bool NOT NULL default false,
+                                      whitelist varchar[] NOT NULL,
+                                      last_modified bigint NOT NULL
+);
+
+CREATE TABLE asset_filter_rules (
+                                    enabled bool NOT NULL default false,
+                                    whitelist varchar[] NOT NULL,
+                                    last_modified bigint NOT NULL
+);
+
+-- insert the default disabled state for each supported filter implementation
+INSERT INTO account_filter_rules VALUES (false, '{}', 0);
+INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
+
 CREATE TABLE txsub_results (
     transaction_hash varchar(64) NOT NULL UNIQUE,
     tx_result        text, -- serialized history.Transaction
