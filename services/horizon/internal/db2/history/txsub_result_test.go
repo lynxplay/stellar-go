@@ -21,10 +21,10 @@ func TestInitIdempotent(t *testing.T) {
 
 	// first invocation, creates row
 	ctx := context.Background()
-	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString()))
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString(), ""))
 
 	// nth invocations on same hash, should be idempotent, if already a row, no-op, no error
-	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString()))
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString(), ""))
 }
 
 func TestTxSubResult(t *testing.T) {
