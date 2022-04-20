@@ -315,6 +315,12 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
+	err = unfilteredProcessors.Commit(s.ctx)
+	if err != nil {
+		err = errors.Wrap(err, "Error committing unfiltered changes from processor")
+		return
+	}
+
 	err = groupTransactionProcessors.Commit(s.ctx)
 	if err != nil {
 		err = errors.Wrap(err, "Error committing changes from processor")
