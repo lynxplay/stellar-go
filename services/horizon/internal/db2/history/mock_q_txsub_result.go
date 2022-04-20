@@ -24,7 +24,7 @@ func (m *MockQTxSubmissionResult) SetTxSubmissionResult(ctx context.Context, tra
 }
 
 func (m *MockQTxSubmissionResult) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error {
-	a := m.Called(ctx, hash)
+	a := m.Called(ctx, hash, innerHash)
 	return a.Error(0)
 }
 
