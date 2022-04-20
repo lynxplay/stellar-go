@@ -255,8 +255,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(insertBuilder.Add(ctx, normalTransaction, sequence))
 	tt.Assert.NoError(insertBuilder.Exec(ctx))
 
-	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, fixture.InnerHash))
-	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, fixture.OuterHash))
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hex.EncodeToString(normalTransaction.Result.TransactionHash[:]), ""))
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, fixture.OuterHash, fixture.InnerHash))
 	tt.Assert.NoError(q.SetTxSubmissionResult(ctx, normalTransaction, uint32(fixture.Ledger.Sequence), fixture.Ledger.ClosedAt))
 	tt.Assert.NoError(q.SetTxSubmissionResult(ctx, feeBumpTransaction, uint32(fixture.Ledger.Sequence), fixture.Ledger.ClosedAt))
 

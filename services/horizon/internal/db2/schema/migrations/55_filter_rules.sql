@@ -17,9 +17,10 @@ INSERT INTO account_filter_rules VALUES (false, '{}', 0);
 INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
 
 CREATE TABLE txsub_results (
-    transaction_hash varchar(64) NOT NULL UNIQUE,
-    tx_result        text, -- serialized history.Transaction
-    submitted_at     timestamp NOT NULL DEFAULT NOW()
+    transaction_hash       varchar(64) NOT NULL UNIQUE,
+    inner_transaction_hash varchar(64),
+    tx_result              text, -- serialized history.Transaction
+    submitted_at           timestamp NOT NULL DEFAULT NOW()
 );
 
 -- +migrate Down

@@ -95,6 +95,7 @@ func (sys *System) Submit(
 	rawTx string,
 	envelope xdr.TransactionEnvelope,
 	hash string,
+	innerHash string,
 ) (result <-chan Result) {
 	sys.Init()
 	response := make(chan Result, 1)
@@ -161,7 +162,7 @@ func (sys *System) Submit(
 
 		// initialize row where to wait for results
 		// TODO: in the case of feebump transactions shouldn't we initialize the result for the outer and inner transactions?
-		if err := db.InitEmptyTxSubmissionResult(ctx, hash); err != nil {
+		if err := db.InitEmptyTxSubmissionResult(ctx, hash, innerHash); err != nil {
 			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}

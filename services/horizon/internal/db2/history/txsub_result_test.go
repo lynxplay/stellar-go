@@ -60,11 +60,13 @@ func TestTxSubResult(t *testing.T) {
 			TxFeeMeta:        "AAAAAA==",
 			TxMeta:           "AAAAAQAAAAAAAAAA",
 			Signatures:       []string{},
+			ExtraSigners:     []string{},
 			InnerSignatures:  nil,
 			MemoType:         "none",
 			Memo:             null.NewString("", false),
 			Successful:       true,
 			TimeBounds:       TimeBounds{Null: true},
+			LedgerBounds:     LedgerBounds{Null: true},
 		},
 	}
 
@@ -78,7 +80,7 @@ func TestTxSubResult(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(transactions, 0)
 
-	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash))
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash, ""))
 
 	_, err = q.GetTxSubmissionResult(ctx, hash)
 	tt.Assert.Error(err)
@@ -128,4 +130,13 @@ func TestTxSubResult(t *testing.T) {
 	transactions, err = q.GetTxSubmissionResults(ctx, []string{hash})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(transactions, 0)
+
+	// test querying by inner hash
+	innerHash := "lambada"
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash, innerHash))
+	err = q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime)
+	tt.Assert.NoError(err)
+	_, err = q.GetTxSubmissionResult(ctx, innerHash)
+	tt.Assert.NoError(err)
+
 }

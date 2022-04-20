@@ -1091,9 +1091,10 @@ ALTER TABLE accounts_signers
 
 -- migration 55
 CREATE TABLE txsub_results (
-                               transaction_hash varchar(64) NOT NULL UNIQUE,
-                               tx_result        text, -- serialized history.Transaction
-                               submitted_at     timestamp NOT NULL DEFAULT NOW()
+                               transaction_hash       varchar(64) NOT NULL UNIQUE,
+                               inner_transaction_hash varchar(64),
+                               tx_result              text, -- serialized history.Transaction
+                               submitted_at           timestamp NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE account_filter_rules (
@@ -1115,12 +1116,14 @@ INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
 INSERT INTO txsub_results
 VALUES (
     'aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf',
+    NULL,
     '{ "TxResult": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=" }',
     '2019-06-03 18:28:47.032496+02');
 
 INSERT INTO txsub_results
 VALUES (
     '56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1',
+    NULL,
     '{ "TxResult": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=" }',
     '2019-06-03 18:28:47.032496+02');
 

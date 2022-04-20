@@ -23,7 +23,7 @@ func (m *MockQTxSubmissionResult) SetTxSubmissionResult(ctx context.Context, tra
 	return a.Error(0)
 }
 
-func (m *MockQTxSubmissionResult) InitEmptyTxSubmissionResult(ctx context.Context, hash string) error {
+func (m *MockQTxSubmissionResult) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error {
 	a := m.Called(ctx, hash)
 	return a.Error(0)
 }

@@ -1564,14 +1564,16 @@ INSERT INTO account_filter_rules VALUES (false, '{}', 0);
 INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
 
 CREATE TABLE txsub_results (
-    transaction_hash varchar(64) NOT NULL UNIQUE,
-    tx_result        text, -- serialized history.Transaction
-    submitted_at     timestamp NOT NULL DEFAULT NOW()
+    transaction_hash       varchar(64) NOT NULL UNIQUE,
+    inner_transaction_hash varchar(64),
+    tx_result              text, -- serialized history.Transaction
+    submitted_at           timestamp NOT NULL DEFAULT NOW()
 );
 
 INSERT INTO txsub_results
 VALUES (
     '2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d',
+    NULL,
     '{ "TxResult": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=" }',
     '2019-06-03 18:28:47.032496+02');
 

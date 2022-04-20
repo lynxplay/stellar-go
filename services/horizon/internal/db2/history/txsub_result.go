@@ -2,11 +2,13 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 )
@@ -14,6 +16,7 @@ import (
 const (
 	txSubResultTableName             = "txsub_results"
 	txSubResultHashColumnName        = "transaction_hash"
+	txSubResultInnerHashColumnName   = "inner_transaction_hash"
 	txSubResultColumnName            = "tx_result"
 	txSubResultSubmittedAtColumnName = "submitted_at"
 )
@@ -23,38 +26,47 @@ type QTxSubmissionResult interface {
 	GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error)
 	GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error)
 	SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
-	InitEmptyTxSubmissionResult(ctx context.Context, hash string) error
+	InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error
 	DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
 
 // TxSubGetResult gets the result of a submitted transaction
 func (q *Q) GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error) {
-	// TODO: Shouldn't we just use GetTxSubmissionResults() instead of ducplicationg code ?
-	sql := sq.Select(txSubResultColumnName).
-		From(txSubResultTableName).
-		Where(sq.NotEq{txSubResultColumnName: nil}).
-		Where(sq.Eq{txSubResultHashColumnName: hash})
-	var result string
-	err := q.Get(ctx, &result, sql)
+	transactions, err := q.GetTxSubmissionResults(ctx, []string{hash})
 	if err != nil {
 		return Transaction{}, err
 	}
-
-	var tx Transaction
-	err = json.Unmarshal([]byte(result), &tx)
-	return tx, err
+	switch len(transactions) {
+	case 0:
+		return Transaction{}, sql.ErrNoRows
+	case 1:
+		return transactions[0], nil
+	default:
+		return Transaction{}, fmt.Errorf("unexpected result size > 1 (%d)", len(transactions))
+	}
 }
 
 // TxSubGetResult gets the result of multiple submitted transactions
 func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error) {
-	sql := sq.Select(txSubResultColumnName).
+	byHash := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
 		Where(sq.NotEq{txSubResultColumnName: nil}).
 		Where(map[string]interface{}{
 			txSubResultHashColumnName: hashes,
 		})
+	byInnerHash := sq.Select(txSubResultColumnName).
+		From(txSubResultTableName).
+		Where(sq.NotEq{txSubResultColumnName: nil}).
+		Where(map[string]interface{}{
+			txSubResultInnerHashColumnName: hashes,
+		})
+	byInnerHashString, args, err := byInnerHash.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get string for inner hash sql query")
+	}
+	union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
 	var result []string
-	err := q.Select(ctx, &result, sql)
+	err = q.Select(ctx, &result, union)
 	if err != nil {
 		return nil, err
 	}
@@ -89,10 +101,16 @@ func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.Ledger
 }
 
 // TxSubInit initializes a submitted transaction, idempotent, doesn't matter if row with hash already exists.
-func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string) error {
+func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error {
+	// TODO: I don't think we should error if there was already an entry with that hash
+	setMap := map[string]interface{}{
+		txSubResultHashColumnName: hash,
+	}
+	if innerHash != "" {
+		setMap[txSubResultInnerHashColumnName] = innerHash
+	}
 	sql := sq.Insert(txSubResultTableName).
-		Columns(txSubResultHashColumnName).
-		Values(hash).
+		SetMap(setMap).
 		Suffix(fmt.Sprintf("ON CONFLICT (%s) DO NOTHING", txSubResultHashColumnName))
 	_, err := q.Exec(ctx, sql)
 	return err
