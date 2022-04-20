@@ -776,7 +776,7 @@ INSERT INTO gorp_migrations VALUES ('48_rebuild_trade_aggregations.sql', '2021-1
 INSERT INTO gorp_migrations VALUES ('49_add_brin_index_trade_aggregations.sql', '2021-12-02 01:33:33.43274+00');
 INSERT INTO gorp_migrations VALUES ('50_liquidity_pools.sql', '2021-12-02 01:33:33.471893+00');
 INSERT INTO gorp_migrations VALUES ('51_remove_ht_unused_indexes.sql', '2021-12-02 01:33:33.47903+00');
-
+INSERT INTO gorp_migrations VALUES ('55_filter_rules.sql', '2021-12-02 01:33:33.47903+00');
 
 
 --
