@@ -10,6 +10,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -78,16 +79,35 @@ func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Tran
 	return txs, err
 }
 
-// TxSubSetResult sets the result of a submitted transaction
+// TxSubSetResult sets the result of submitted transaction, batching the updates if necessary
 func (q *Q) SetTxSubmissionResults(ctx context.Context, transactions []ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
+	// NOTE: it may be worth factoring out this batching into a BatchUpdateBuilder (similar to BatchInsertBuilder)
+	//       when/if we have more update use-cases.
 
-	if len(transactions) == 0 {
-		return 0, nil
+	// Four parameters per transaction, two parameters in each CASE and two in the IN statement
+	const maxBatchSize = db.PostgresQueryMaxParams/4 + 1
+	totalRowsAffected := int64(0)
+	for len(transactions) > 0 {
+		batchSize := maxBatchSize
+		if len(transactions) < maxBatchSize {
+			batchSize = len(transactions)
+		}
+		affected, err := q.setTxSubmissionResults(ctx, transactions[:batchSize], sequence, ledgerClosetime)
+		if err != nil {
+			return totalRowsAffected, err
+		}
+		totalRowsAffected += affected
+		transactions = transactions[batchSize:]
 	}
+	return totalRowsAffected, nil
+}
+
+func (q *Q) setTxSubmissionResults(ctx context.Context, transactions []ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
 	caseStmt := sq.Case(txSubResultHashColumnName)
 	hashes := make([]string, len(transactions))
+	encodingBuffer := xdr.NewEncodingBuffer()
 	for i, transaction := range transactions {
-		row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
+		row, err := transactionToRow(transaction, sequence, encodingBuffer)
 		if err != nil {
 			return 0, err
 		}
@@ -99,10 +119,6 @@ func (q *Q) SetTxSubmissionResults(ctx context.Context, transactions []ingest.Le
 		if err != nil {
 			return 0, err
 		}
-		// TODO: this creates a lot of variables in the query, (two per transaction to be updated)
-		//       will this impact the request negatively?
-		//       postgres seems to allow 65535 parameters, so we are probably fine but it would probably
-		//       be better to use `Update ... From` as suggested here https://stackoverflow.com/a/18799497
 		caseStmt = caseStmt.When(sq.Expr("?", row.TransactionHash), sq.Expr("?", serialized))
 		hashes[i] = row.TransactionHash
 	}

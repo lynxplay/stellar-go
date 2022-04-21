@@ -10,6 +10,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -143,4 +144,29 @@ func TestTxSubResult(t *testing.T) {
 	_, err = q.GetTxSubmissionResult(ctx, innerHash)
 	tt.Assert.NoError(err)
 
+}
+
+func TestSetTxSubResultBatching(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	transactionLen := db.PostgresQueryMaxParams + 3
+	transactions := make([]ingest.LedgerTransaction, transactionLen, transactionLen)
+	for i := range transactions {
+		transactions[i] = buildLedgerTransaction(tt.T, testTransaction{
+			index:         1,
+			envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			metaXDR:       "AAAAAQAAAAAAAAAA",
+			hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
+		})
+	}
+
+	ctx := context.Background()
+	updatedRows, err := q.SetTxSubmissionResults(ctx, transactions, 0, time.Now())
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(0), updatedRows)
 }
