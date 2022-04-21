@@ -18,9 +18,9 @@ func (m *MockQTxSubmissionResult) GetTxSubmissionResult(ctx context.Context, has
 	return a.Get(0).(Transaction), a.Error(1)
 }
 
-func (m *MockQTxSubmissionResult) SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
+func (m *MockQTxSubmissionResult) SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
 	a := m.Called(ctx, transaction, sequence)
-	return a.Error(0)
+	return a.Get(0).(int64), a.Error(1)
 }
 
 func (m *MockQTxSubmissionResult) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error {

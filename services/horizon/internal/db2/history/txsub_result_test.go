@@ -95,11 +95,13 @@ func TestTxSubResult(t *testing.T) {
 	// TODO: should it?
 	toInsertFail := toInsert
 	toInsertFail.Result.TransactionHash = xdr.Hash{0x1, 0x2, 0x3, 0x4}
-	err = q.SetTxSubmissionResult(ctx, toInsertFail, sequence, ledgerCloseTime)
+	_, err = q.SetTxSubmissionResult(ctx, toInsertFail, sequence, ledgerCloseTime)
 	tt.Assert.NoError(err)
 
 	// Now insert the valid transaction
-	tt.Assert.NoError(q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime))
+	affectedRows, err := q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(1), affectedRows)
 	transaction, err := q.GetTxSubmissionResult(ctx, hash)
 	tt.Assert.NoError(err)
 
@@ -119,9 +121,9 @@ func TestTxSubResult(t *testing.T) {
 	tt.Assert.Len(transactions, 1)
 
 	time.Sleep(2 * time.Second)
-	rowsAffected, err := q.DeleteTxSubmissionResultsOlderThan(ctx, 1)
+	affectedRows, err = q.DeleteTxSubmissionResultsOlderThan(ctx, 1)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), rowsAffected)
+	tt.Assert.Equal(int64(1), affectedRows)
 
 	_, err = q.GetTxSubmissionResult(ctx, hash)
 	tt.Assert.Error(err)
@@ -134,7 +136,7 @@ func TestTxSubResult(t *testing.T) {
 	// test querying by inner hash
 	innerHash := "lambada"
 	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash, innerHash))
-	err = q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime)
+	_, err = q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime)
 	tt.Assert.NoError(err)
 	_, err = q.GetTxSubmissionResult(ctx, innerHash)
 	tt.Assert.NoError(err)

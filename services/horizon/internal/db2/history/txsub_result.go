@@ -25,7 +25,7 @@ const (
 type QTxSubmissionResult interface {
 	GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error)
 	GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error)
-	SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error
+	SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error)
 	InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error
 	DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
@@ -79,10 +79,10 @@ func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Tran
 }
 
 // TxSubSetResult sets the result of a submitted transaction
-func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) error {
+func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
 	row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
 	if err != nil {
-		return err
+		return 0, err
 	}
 	tx := Transaction{
 		LedgerCloseTime:          ledgerClosetime,
@@ -90,14 +90,16 @@ func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.Ledger
 	}
 	b, err := json.Marshal(tx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	sql := sq.Update(txSubResultTableName).
 		Where(sq.Eq{txSubResultHashColumnName: row.TransactionHash}).
 		SetMap(map[string]interface{}{txSubResultColumnName: b})
-	// TODO: we should probably return the number of updated rows
-	_, err = q.Exec(ctx, sql)
-	return err
+	result, err := q.Exec(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 // TxSubInit initializes a submitted transaction, idempotent, doesn't matter if row with hash already exists.
