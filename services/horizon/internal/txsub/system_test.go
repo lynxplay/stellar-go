@@ -319,10 +319,47 @@ func (suite *SystemTestSuite) TestTick_Noop() {
 		ReadOnly:  false,
 	}).Return(nil).Once()
 	suite.db.On("Commit").Return(nil).Once()
-	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(30)).
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
 	suite.system.Tick(suite.ctx)
+}
+
+// Delete should only be called every TTL
+func (suite *SystemTestSuite) TestTick_DeleteEveryTTL() {
+	suite.db.On("BeginTx", &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  false,
+	}).Return(nil).Once()
+	suite.db.On("Commit").Return(nil).Once()
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
+		Return(int64(0), nil).Once()
+
+	suite.system.Tick(suite.ctx)
+
+	// Delete shouldn't be called the second time since it should wait 300 seconds
+
+	suite.db.On("BeginTx", &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  false,
+	}).Return(nil).Once()
+	suite.db.On("Commit").Return(nil).Once()
+
+	suite.system.Tick(suite.ctx)
+
+	// But it should be called a third time if we ensure the TTL has passed
+	suite.system.SubmissionResultTTL = time.Second
+	time.Sleep(2 * time.Second)
+	suite.db.On("BeginTx", &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  false,
+	}).Return(nil).Once()
+	suite.db.On("Commit").Return(nil).Once()
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(1)).
+		Return(int64(0), nil).Once()
+
+	suite.system.Tick(suite.ctx)
+
 }
 
 // TestTick_Deadlock is a regression test for Tick() deadlock: if for any reason
@@ -346,7 +383,7 @@ func (suite *SystemTestSuite) TestTick_Deadlock() {
 			suite.system.Tick(suite.ctx)
 		}).
 		Once()
-	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(30)).
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
 	suite.system.Tick(suite.ctx)
@@ -364,7 +401,7 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
 		Return([]history.Transaction{}, nil).Once()
-	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(30)).
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
 	suite.system.Tick(suite.ctx)
@@ -379,7 +416,7 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
 		Return([]history.Transaction{suite.successTx.Transaction}, nil).Once()
-	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(30)).
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
 	suite.system.Tick(suite.ctx)
@@ -433,7 +470,7 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{innerHash}).
 		Return([]history.Transaction{feeBumpTx.Transaction}, nil).Once()
-	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(30)).
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
 	suite.system.Tick(suite.ctx)
@@ -459,7 +496,7 @@ func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
 		Return([]history.Transaction{suite.successTx.Transaction}, nil).Once()
-	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(0)).
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
 	suite.system.Tick(suite.ctx)

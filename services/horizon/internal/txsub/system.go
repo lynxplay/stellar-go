@@ -34,12 +34,14 @@ type System struct {
 
 	accountSeqPollInterval time.Duration
 
-	DB                func(context.Context) HorizonDB
-	Pending           OpenSubmissionList
-	Submitter         Submitter
-	SubmissionQueue   *sequence.Manager
-	SubmissionTimeout time.Duration
-	Log               *log.Entry
+	DB                   func(context.Context) HorizonDB
+	Pending              OpenSubmissionList
+	Submitter            Submitter
+	SubmissionQueue      *sequence.Manager
+	SubmissionTimeout    time.Duration
+	SubmissionResultTTL  time.Duration
+	lastSubResultCleanup time.Time
+	Log                  *log.Entry
 
 	Metrics struct {
 		// SubmissionDuration exposes timing metrics about the rate and latency of
@@ -385,13 +387,14 @@ func (sys *System) Tick(ctx context.Context) {
 		}
 	}
 
-	// TODO: we shouldn't do this on every tick, we should do it every sys.SubmissionTimeout/time.Second
-	//       at the very most
-	// TODO: sys.SubmissionTimeout/time.Second is probably too small since it's useful to keep the result around
-	//       in case the same transaction is attempted to be sent multiple times.
-	if _, err := db.DeleteTxSubmissionResultsOlderThan(ctx, uint64(sys.SubmissionTimeout/time.Second)); err != nil {
-		logger.WithStack(err).Error(err)
-		return
+	// Wait at least SubmissionResultTTL between cleanups
+	if time.Since(sys.lastSubResultCleanup) > sys.SubmissionResultTTL {
+		sys.lastSubResultCleanup = time.Now()
+		ttlInSeconds := uint64(sys.SubmissionResultTTL / time.Second)
+		if _, err := db.DeleteTxSubmissionResultsOlderThan(ctx, ttlInSeconds); err != nil {
+			logger.WithStack(err).Error(err)
+			return
+		}
 	}
 
 	stillOpen, err := sys.Pending.Clean(ctx, sys.SubmissionTimeout)
@@ -445,6 +448,10 @@ func (sys *System) Init() {
 			// to drop the transaction if not added to the ledger and ask client to try again
 			// by sending a Timeout response.
 			sys.SubmissionTimeout = 30 * time.Second
+		}
+
+		if sys.SubmissionResultTTL == 0 {
+			sys.SubmissionResultTTL = 5 * time.Minute
 		}
 	})
 }
