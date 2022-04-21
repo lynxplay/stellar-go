@@ -99,6 +99,10 @@ func (q *Q) SetTxSubmissionResults(ctx context.Context, transactions []ingest.Le
 		if err != nil {
 			return 0, err
 		}
+		// TODO: this creates a lot of variables in the query, (two per transaction to be updated)
+		//       will this impact the request negatively?
+		//       postgres seems to allow 65535 parameters, so we are probably fine but it would probably
+		//       be better to use `Update ... From` as suggested here https://stackoverflow.com/a/18799497
 		caseStmt = caseStmt.When(sq.Expr("?", row.TransactionHash), sq.Expr("?", serialized))
 		hashes[i] = row.TransactionHash
 	}

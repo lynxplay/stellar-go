@@ -35,6 +35,7 @@ func (p *TxSubmissionResultProcessor) Commit(ctx context.Context) error {
 	seq := uint32(p.ledger.Header.LedgerSeq)
 	closeTime := time.Unix(int64(p.ledger.Header.ScpValue.CloseTime), 0).UTC()
 	// TODO: will all the transactions in the ledger fit in the maximum query size?
+	//       we probably need a batchuUpdateBuilder, like the batchInsertBuilder
 	_, err := p.txSubmissionResultQ.SetTxSubmissionResults(ctx, p.txs, seq, closeTime)
 	return err
 }
