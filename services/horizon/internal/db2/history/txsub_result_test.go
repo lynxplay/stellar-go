@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
@@ -95,11 +96,12 @@ func TestTxSubResult(t *testing.T) {
 	// TODO: should it?
 	toInsertFail := toInsert
 	toInsertFail.Result.TransactionHash = xdr.Hash{0x1, 0x2, 0x3, 0x4}
-	_, err = q.SetTxSubmissionResult(ctx, toInsertFail, sequence, ledgerCloseTime)
+	affectedRows, err := q.SetTxSubmissionResults(ctx, []ingest.LedgerTransaction{toInsertFail}, sequence, ledgerCloseTime)
 	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(0), affectedRows)
 
 	// Now insert the valid transaction
-	affectedRows, err := q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime)
+	affectedRows, err = q.SetTxSubmissionResults(ctx, []ingest.LedgerTransaction{toInsert}, sequence, ledgerCloseTime)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), affectedRows)
 	transaction, err := q.GetTxSubmissionResult(ctx, hash)
@@ -136,7 +138,7 @@ func TestTxSubResult(t *testing.T) {
 	// test querying by inner hash
 	innerHash := "lambada"
 	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash, innerHash))
-	_, err = q.SetTxSubmissionResult(ctx, toInsert, sequence, ledgerCloseTime)
+	_, err = q.SetTxSubmissionResults(ctx, []ingest.LedgerTransaction{toInsert}, sequence, ledgerCloseTime)
 	tt.Assert.NoError(err)
 	_, err = q.GetTxSubmissionResult(ctx, innerHash)
 	tt.Assert.NoError(err)

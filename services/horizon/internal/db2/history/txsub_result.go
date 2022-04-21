@@ -25,7 +25,7 @@ const (
 type QTxSubmissionResult interface {
 	GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error)
 	GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error)
-	SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error)
+	SetTxSubmissionResults(ctx context.Context, transactions []ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error)
 	InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error
 	DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
@@ -79,22 +79,33 @@ func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Tran
 }
 
 // TxSubSetResult sets the result of a submitted transaction
-func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
-	row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
-	if err != nil {
-		return 0, err
+func (q *Q) SetTxSubmissionResults(ctx context.Context, transactions []ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
+
+	if len(transactions) == 0 {
+		return 0, nil
 	}
-	tx := Transaction{
-		LedgerCloseTime:          ledgerClosetime,
-		TransactionWithoutLedger: row,
+	caseStmt := sq.Case(txSubResultHashColumnName)
+	hashes := make([]string, len(transactions))
+	for i, transaction := range transactions {
+		row, err := transactionToRow(transaction, sequence, xdr.NewEncodingBuffer())
+		if err != nil {
+			return 0, err
+		}
+		tx := Transaction{
+			LedgerCloseTime:          ledgerClosetime,
+			TransactionWithoutLedger: row,
+		}
+		serialized, err := json.Marshal(tx)
+		if err != nil {
+			return 0, err
+		}
+		caseStmt = caseStmt.When(sq.Expr("?", row.TransactionHash), sq.Expr("?", serialized))
+		hashes[i] = row.TransactionHash
 	}
-	b, err := json.Marshal(tx)
-	if err != nil {
-		return 0, err
-	}
+
 	sql := sq.Update(txSubResultTableName).
-		Where(sq.Eq{txSubResultHashColumnName: row.TransactionHash}).
-		SetMap(map[string]interface{}{txSubResultColumnName: b})
+		Set(txSubResultColumnName, caseStmt).
+		Where(sq.Eq{txSubResultHashColumnName: hashes})
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err

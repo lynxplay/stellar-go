@@ -257,12 +257,10 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 
 	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hex.EncodeToString(normalTransaction.Result.TransactionHash[:]), ""))
 	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, fixture.OuterHash, fixture.InnerHash))
-	affectedRows, err := q.SetTxSubmissionResult(ctx, normalTransaction, uint32(fixture.Ledger.Sequence), fixture.Ledger.ClosedAt)
+	txs := []ingest.LedgerTransaction{normalTransaction, feeBumpTransaction}
+	affectedRows, err := q.SetTxSubmissionResults(ctx, txs, uint32(fixture.Ledger.Sequence), fixture.Ledger.ClosedAt)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), affectedRows)
-	affectedRows, err = q.SetTxSubmissionResult(ctx, feeBumpTransaction, uint32(fixture.Ledger.Sequence), fixture.Ledger.ClosedAt)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), affectedRows)
+	tt.Assert.Equal(int64(2), affectedRows)
 	account := fixture.Envelope.SourceAccount().ToAccountId()
 	feeBumpAccount := fixture.Envelope.FeeBumpAccount().ToAccountId()
 

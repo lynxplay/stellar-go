@@ -34,13 +34,7 @@ func (p *TxSubmissionResultProcessor) ProcessTransaction(ctx context.Context, tr
 func (p *TxSubmissionResultProcessor) Commit(ctx context.Context) error {
 	seq := uint32(p.ledger.Header.LedgerSeq)
 	closeTime := time.Unix(int64(p.ledger.Header.ScpValue.CloseTime), 0).UTC()
-	for _, tx := range p.txs {
-		// TODO: do all of this at once
-		// TODO: in the case of feebump transactions shouldn't we add the result for the outer and inner transactions?
-		if _, err := p.txSubmissionResultQ.SetTxSubmissionResult(ctx, tx, seq, closeTime); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	// TODO: will all the transactions in the ledger fit in the maximum query size?
+	_, err := p.txSubmissionResultQ.SetTxSubmissionResults(ctx, p.txs, seq, closeTime)
+	return err
 }

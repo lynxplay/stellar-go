@@ -298,6 +298,9 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
+	q.MockQTxSubmissionResult.On("SetTxSubmissionResults", ctx, []ingest.LedgerTransaction(nil), uint32(0)).
+		Return(int64(0), nil).Once()
+
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		config:   config,
@@ -350,6 +353,9 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
+
+	q.MockQTxSubmissionResult.On("SetTxSubmissionResults", ctx, []ingest.LedgerTransaction(nil), uint32(0)).
+		Return(int64(0), nil).Once()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,
