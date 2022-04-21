@@ -104,7 +104,6 @@ func (q *Q) SetTxSubmissionResult(ctx context.Context, transaction ingest.Ledger
 
 // TxSubInit initializes a submitted transaction, idempotent, doesn't matter if row with hash already exists.
 func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error {
-	// TODO: I don't think we should error if there was already an entry with that hash
 	setMap := map[string]interface{}{
 		txSubResultHashColumnName: hash,
 	}
