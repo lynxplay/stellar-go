@@ -31,7 +31,7 @@ type QTxSubmissionResult interface {
 	DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
 
-// TxSubGetResult gets the result of a submitted transaction
+// GetTxSubmissionResult gets the result of a submitted transaction
 func (q *Q) GetTxSubmissionResult(ctx context.Context, hash string) (Transaction, error) {
 	transactions, err := q.GetTxSubmissionResults(ctx, []string{hash})
 	if err != nil {
@@ -47,7 +47,7 @@ func (q *Q) GetTxSubmissionResult(ctx context.Context, hash string) (Transaction
 	}
 }
 
-// TxSubGetResult gets the result of multiple submitted transactions
+// GetTxSubmissionResults gets the result of multiple submitted transactions
 func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Transaction, error) {
 	byHash := sq.Select(txSubResultColumnName).
 		From(txSubResultTableName).
@@ -79,7 +79,7 @@ func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Tran
 	return txs, err
 }
 
-// TxSubSetResult sets the result of submitted transaction, batching the updates if necessary
+// SetTxSubmissionResults sets the result of submitted transaction, batching the updates if necessary
 func (q *Q) SetTxSubmissionResults(ctx context.Context, transactions []ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
 	// NOTE: it may be worth factoring out this batching into a BatchUpdateBuilder (similar to BatchInsertBuilder)
 	//       when/if we have more update use-cases.
@@ -133,7 +133,7 @@ func (q *Q) setTxSubmissionResults(ctx context.Context, transactions []ingest.Le
 	return result.RowsAffected()
 }
 
-// TxSubInit initializes a submitted transaction, idempotent, doesn't matter if row with hash already exists.
+// InitEmptyTxSubmissionResult initializes a submitted transaction, idempotent, doesn't matter if row with hash already exists.
 func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerHash string) error {
 	setMap := map[string]interface{}{
 		txSubResultHashColumnName: hash,
@@ -148,7 +148,7 @@ func (q *Q) InitEmptyTxSubmissionResult(ctx context.Context, hash string, innerH
 	return err
 }
 
-// TxSubDeleteOlderThan deletes entries older than certain duration
+// DeleteTxSubmissionResultsOlderThan deletes entries older than certain duration
 func (q *Q) DeleteTxSubmissionResultsOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
 	sql := sq.Delete(txSubResultTableName).
 		Where(sq.Expr("now() >= ("+txSubResultSubmittedAtColumnName+" + interval '1 second' * ?)", howOldInSeconds))
