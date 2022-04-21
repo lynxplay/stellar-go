@@ -94,7 +94,6 @@ func TestTxSubResult(t *testing.T) {
 
 	// Trying to set the result of a transaction which wasn't initialized
 	// doesn't fail
-	// TODO: should it?
 	toInsertFail := toInsert
 	toInsertFail.Result.TransactionHash = xdr.Hash{0x1, 0x2, 0x3, 0x4}
 	affectedRows, err := q.SetTxSubmissionResults(ctx, []ingest.LedgerTransaction{toInsertFail}, sequence, ledgerCloseTime)
