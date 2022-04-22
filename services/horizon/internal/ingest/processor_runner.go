@@ -150,11 +150,23 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
-	if !s.config.EnableIngestionFiltering {
-		return newGroupTransactionFilterers(nil)
+	var f []processors.LedgerTransactionFilterer
+	if s.config.EnableIngestionFiltering {
+		f = append(f, s.filters.GetFilters(s.historyQ, s.ctx)...)
 	}
 
-	return newGroupTransactionFilterers(s.filters.GetFilters(s.historyQ, s.ctx))
+	return newGroupTransactionFilterers(f)
+}
+
+func (s *ProcessorRunner) buildUnfilteredProcessor(ledger xdr.LedgerHeaderHistoryEntry) *groupTransactionProcessors {
+	// when in online mode, the submission result processor must always run (regardless of filtering)
+	var p []horizonTransactionProcessor
+	if !s.config.ReingestEnabled {
+		txSubProc := processors.NewTxSubmissionResultProcessor(s.historyQ, ledger)
+		p = append(p, txSubProc)
+	}
+
+	return newGroupTransactionProcessors(p)
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
@@ -300,13 +312,14 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		err = errors.Wrap(err, "Error while checking for supported protocol version")
 		return
 	}
+	header := transactionReader.GetHeader()
 	groupTransactionFilterers := s.buildTransactionFilterer()
-	unfilteredProcessors := processors.NewTxSubmissionResultProcessor(s.historyQ, transactionReader.GetHeader())
+	groupUnfilteredProcessors := s.buildUnfilteredProcessor(header)
 	groupTransactionProcessors := s.buildTransactionProcessor(
-		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
+		&ledgerTransactionStats, &tradeProcessor, header)
 	err = processors.StreamLedgerTransactions(s.ctx,
 		groupTransactionFilterers,
-		unfilteredProcessors,
+		groupUnfilteredProcessors,
 		groupTransactionProcessors,
 		transactionReader,
 	)
@@ -315,7 +328,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
-	err = unfilteredProcessors.Commit(s.ctx)
+	err = groupUnfilteredProcessors.Commit(s.ctx)
 	if err != nil {
 		err = errors.Wrap(err, "Error committing unfiltered changes from processor")
 		return
@@ -330,6 +343,9 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
+	for key, duration := range groupUnfilteredProcessors.processorsRunDurations {
+		transactionDurations[key] = duration
+	}
 	for key, duration := range groupTransactionFilterers.processorsRunDurations {
 		transactionDurations[key] = duration
 	}

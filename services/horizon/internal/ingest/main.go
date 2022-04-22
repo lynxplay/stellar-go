@@ -85,6 +85,7 @@ type Config struct {
 	DisableStateVerification     bool
 	EnableExtendedLogLedgerStats bool
 
+	ReingestEnabled             bool
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
 
