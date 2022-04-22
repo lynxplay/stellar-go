@@ -87,6 +87,7 @@ func (g groupTransactionProcessors) Commit(ctx context.Context) error {
 type groupTransactionFilterers struct {
 	filterers []processors.LedgerTransactionFilterer
 	processorsRunDurations
+	droppedTransactions int64
 }
 
 func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer) *groupTransactionFilterers {
@@ -96,7 +97,7 @@ func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilter
 	}
 }
 
-func (g groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
+func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
 	for _, f := range g.filterers {
 		startTime := time.Now()
 		include, err := f.FilterTransaction(ctx, tx)
@@ -106,6 +107,7 @@ func (g groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ing
 		g.AddRunDuration(fmt.Sprintf("%T", f), startTime)
 		if !include {
 			// filter out, we can return early
+			g.droppedTransactions++
 			return false, nil
 		}
 	}

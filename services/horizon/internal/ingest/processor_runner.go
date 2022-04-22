@@ -328,9 +328,13 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	}
 
 	transactionStats = ledgerTransactionStats.GetResults()
+	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
+	for key, duration := range groupTransactionFilterers.processorsRunDurations {
+		transactionDurations[key] = duration
+	}
+
 	tradeStats = tradeProcessor.GetStats()
-	// TODO: store filtering durations
 	return
 }
 
