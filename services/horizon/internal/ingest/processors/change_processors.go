@@ -51,7 +51,6 @@ func StreamLedgerTransactions(
 			)
 		}
 		if !include {
-			// TODO, may be worthwhile to emit new metrics here for 'Filtered Transaction Count' ?
 			log.Debugf("Filters did not find match, skipping tx hash %v", tx.Result.TransactionHash)
 			continue
 		}

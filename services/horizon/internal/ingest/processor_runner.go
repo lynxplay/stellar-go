@@ -333,6 +333,9 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	for key, duration := range groupTransactionFilterers.processorsRunDurations {
 		transactionDurations[key] = duration
 	}
+	for key, duration := range unfilteredProcessors.GetRunDurations() {
+		transactionDurations[key] = duration
+	}
 
 	tradeStats = tradeProcessor.GetStats()
 	return
