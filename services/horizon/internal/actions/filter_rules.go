@@ -22,10 +22,6 @@ func (handler FilterConfigHandler) GetAssetConfig(w http.ResponseWriter, r *http
 
 	config, err := historyQ.GetAssetFilterConfig(r.Context())
 
-	if historyQ.NoRows(err) {
-		err = problem.NotFound
-	}
-
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return

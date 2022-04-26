@@ -15,6 +15,10 @@ import (
 // decodeResponse decodes the response from a request to a horizon server
 func decodeResponse(resp *http.Response, object interface{}, horizonUrl string, clock *clock.Clock) (err error) {
 	defer resp.Body.Close()
+	if object == nil {
+		// Nothing to decode
+		return nil
+	}
 	decoder := json.NewDecoder(resp.Body)
 
 	u, err := url.Parse(horizonUrl)
@@ -32,10 +36,6 @@ func decodeResponse(resp *http.Response, object interface{}, horizonUrl string, 
 			return errors.Wrap(decodeError, "error decoding horizon.Problem")
 		}
 		return horizonError
-	}
-	if object == nil {
-		// Nothing to decode
-		return nil
 	}
 	err = decoder.Decode(&object)
 	if err != nil {
