@@ -22,7 +22,7 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 			"enable-ingestion-filtering": "true",
 		},
 	})
-	itest.Client().AdminPort = adminPort
+	itest.AdminClient().AdminPort = adminPort
 
 	fullKeys, accounts := itest.CreateAccounts(2, "10000")
 	whitelistedAccount := accounts[0]
@@ -55,10 +55,10 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 		Whitelist: []string{whitelistedAccount.GetAccountID()},
 		Enabled:   &enabled,
 	}
-	err = itest.Client().AdminSetIngestionAccountFilter(expectedAccountFilter)
+	err = itest.AdminClient().AdminSetIngestionAccountFilter(expectedAccountFilter)
 	tt.NoError(err)
 
-	accountFilter, err := itest.Client().AdminGetIngestionAccountFilter()
+	accountFilter, err := itest.AdminClient().AdminGetIngestionAccountFilter()
 	tt.NoError(err)
 
 	tt.ElementsMatch(expectedAccountFilter.Whitelist, accountFilter.Whitelist)
@@ -99,7 +99,7 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 			"enable-ingestion-filtering": "true",
 		},
 	})
-	itest.Client().AdminPort = adminPort
+	itest.AdminClient().AdminPort = adminPort
 
 	fullKeys, accounts := itest.CreateAccounts(1, "10000")
 	defaultAllowedAccount := accounts[0]
@@ -133,10 +133,10 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 		Whitelist: []string{asset.StringCanonical()},
 		Enabled:   &enabled,
 	}
-	err = itest.Client().AdminSetIngestionAssetFilter(expectedAssetFilter)
+	err = itest.AdminClient().AdminSetIngestionAssetFilter(expectedAssetFilter)
 	tt.NoError(err)
 
-	assetFilter, err := itest.Client().AdminGetIngestionAssetFilter()
+	assetFilter, err := itest.AdminClient().AdminGetIngestionAssetFilter()
 	tt.NoError(err)
 
 	tt.ElementsMatch(expectedAssetFilter.Whitelist, assetFilter.Whitelist)

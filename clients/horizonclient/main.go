@@ -135,9 +135,6 @@ type Client struct {
 	HorizonURL        string
 	fixHorizonURLOnce sync.Once
 
-	// Admin port (admin requests will fail if unset)
-	AdminPort uint16
-
 	// HTTP client to make requests with
 	HTTP HTTP
 
@@ -152,9 +149,30 @@ type Client struct {
 	clock *clock.Clock
 }
 
+type AdminClient struct {
+	// Admin port (admin requests will fail if unset)
+	AdminPort uint16
+
+	// HTTP client to make requests with
+	HTTP HTTP
+
+	// max client wait time for response
+	horizonTimeout time.Duration
+
+	// clock is a Clock returning the current time.
+	clock *clock.Clock
+}
+
 // SubmitTxOpts represents the submit transaction options
 type SubmitTxOpts struct {
 	SkipMemoRequiredCheck bool
+}
+
+type AdminClientInterface interface {
+	AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error)
+	AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error)
+	AdminSetIngestionAccountFilter(hProtocol.AccountFilterConfig) error
+	AdminSetIngestionAssetFilter(hProtocol.AssetFilterConfig) error
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -217,10 +235,6 @@ type ClientInterface interface {
 	LiquidityPools(request LiquidityPoolsRequest) (hProtocol.LiquidityPoolsPage, error)
 	NextLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
 	PrevLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
-	AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error)
-	AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error)
-	AdminSetIngestionAccountFilter(hProtocol.AccountFilterConfig) error
-	AdminSetIngestionAssetFilter(hProtocol.AssetFilterConfig) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network.

@@ -15,6 +15,10 @@ type MockClient struct {
 	mock.Mock
 }
 
+type MockAdminClient struct {
+	mock.Mock
+}
+
 // Accounts is a mocking method
 func (m *MockClient) Accounts(request AccountsRequest) (hProtocol.AccountsPage, error) {
 	a := m.Called(request)
@@ -349,25 +353,28 @@ func (m *MockClient) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (
 	return a.Get(0).(hProtocol.LiquidityPoolsPage), a.Error(1)
 }
 
-func (m *MockClient) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
+func (m *MockAdminClient) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
 	a := m.Called()
 	return a.Get(0).(hProtocol.AccountFilterConfig), a.Error(1)
 }
 
-func (m *MockClient) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
+func (m *MockAdminClient) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
 	a := m.Called()
 	return a.Get(0).(hProtocol.AssetFilterConfig), a.Error(1)
 }
 
-func (m *MockClient) AdminSetIngestionAccountFilter(resource hProtocol.AccountFilterConfig) error {
+func (m *MockAdminClient) AdminSetIngestionAccountFilter(resource hProtocol.AccountFilterConfig) error {
 	a := m.Called(resource)
 	return a.Error(0)
 }
 
-func (m *MockClient) AdminSetIngestionAssetFilter(resource hProtocol.AssetFilterConfig) error {
+func (m *MockAdminClient) AdminSetIngestionAssetFilter(resource hProtocol.AssetFilterConfig) error {
 	a := m.Called(resource)
 	return a.Error(0)
 }
 
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}
+
+// ensure that the MockClient implements ClientInterface
+var _ AdminClientInterface = &MockAdminClient{}

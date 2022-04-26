@@ -122,7 +122,7 @@ func (c *Client) sendHTTPRequest(req *http.Request, a interface{}) error {
 	if resp, err := c.HTTP.Do(req.WithContext(ctx)); err != nil {
 		return err
 	} else {
-		return decodeResponse(resp, a, c)
+		return decodeResponse(resp, a, c.HorizonURL, c.clock)
 	}
 }
 
@@ -842,75 +842,6 @@ func (c *Client) NextLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (lp h
 func (c *Client) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (lp hProtocol.LiquidityPoolsPage, err error) {
 	err = c.sendGetRequest(page.Links.Prev.Href, &lp)
 	return
-}
-
-func (c *Client) getIngestionFiltersURL(name string) (string, error) {
-	baseURL, err := url.Parse(c.fixHorizonURL())
-	if err != nil {
-		return "", err
-	}
-	baseURL.Path = baseURL.Path + "ingestion/filters/" + name
-	if c.AdminPort == 0 {
-		return "", errors.New("Client.AdminPort not specified")
-	}
-	baseURL.Host = fmt.Sprintf("%s:%d", baseURL.Hostname(), c.AdminPort)
-	return baseURL.String(), nil
-}
-
-func (c *Client) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
-	url, err := c.getIngestionFiltersURL("asset")
-	if err != nil {
-		return hProtocol.AssetFilterConfig{}, err
-	}
-	var filter hProtocol.AssetFilterConfig
-	err = c.sendGetRequest(url, &filter)
-	return filter, err
-}
-
-func (c *Client) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
-	url, err := c.getIngestionFiltersURL("account")
-	if err != nil {
-		return hProtocol.AccountFilterConfig{}, err
-	}
-	var filter hProtocol.AccountFilterConfig
-	err = c.sendGetRequest(url, &filter)
-	return filter, err
-}
-
-func (c *Client) AdminSetIngestionAssetFilter(filter hProtocol.AssetFilterConfig) error {
-	url, err := c.getIngestionFiltersURL("asset")
-	if err != nil {
-		return err
-	}
-	buf := bytes.NewBuffer(nil)
-	err = json.NewEncoder(buf).Encode(filter)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest(http.MethodPut, url, buf)
-	if err != nil {
-		return errors.Wrap(err, "error creating HTTP request")
-	}
-	req.Header.Add("Content-Type", "application/json")
-	return c.sendHTTPRequest(req, nil)
-}
-
-func (c *Client) AdminSetIngestionAccountFilter(filter hProtocol.AccountFilterConfig) error {
-	url, err := c.getIngestionFiltersURL("account")
-	if err != nil {
-		return err
-	}
-	buf := bytes.NewBuffer(nil)
-	err = json.NewEncoder(buf).Encode(filter)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest(http.MethodPut, url, buf)
-	if err != nil {
-		return errors.Wrap(err, "error creating HTTP request")
-	}
-	req.Header.Add("Content-Type", "application/json")
-	return c.sendHTTPRequest(req, nil)
 }
 
 // ensure that the horizon client implements ClientInterface
