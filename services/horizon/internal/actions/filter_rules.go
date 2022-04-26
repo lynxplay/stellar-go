@@ -127,7 +127,7 @@ func (handler FilterConfigHandler) assetFilterResource(r *http.Request) (hProtoc
 	var filterRequest hProtocol.AssetFilterConfig
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&filterRequest); err != nil {
-        p := problem.NewProblemWithInvalidField(problem.BadRequest, "reason", fmt.Errorf("invalid json for asset filter config %v", err.Error()))
+		p := problem.NewProblemWithInvalidField(problem.BadRequest, "reason", fmt.Errorf("invalid json for asset filter config %v", err.Error()))
 		return hProtocol.AssetFilterConfig{}, p
 	}
 	return filterRequest, nil
