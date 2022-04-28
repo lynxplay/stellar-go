@@ -21,6 +21,8 @@ type HorizonDB interface {
 	Commit() error
 	Rollback() error
 	NoRows(error) bool
+	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
+	TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
 }
 
 // System represents a completely configured transaction submission system.
@@ -305,6 +307,27 @@ func (sys *System) unsetTickInProgress() {
 	sys.tickInProgress = false
 }
 
+func (sys *System) getHistoricalTXs(db HorizonDB, ctx context.Context, pending []string, ledgerBackwards int32) ([]history.Transaction, error) {
+	logger := log.Ctx(ctx)
+	latestLedger, err := db.GetLatestHistoryLedger(ctx)
+	if err != nil {
+		logger.WithError(err).Error("error getting latest history ledger")
+		return nil, err
+	}
+
+	sinceLedgerSeq := int32(latestLedger) - ledgerBackwards
+	if sinceLedgerSeq < 0 {
+		sinceLedgerSeq = 0
+	}
+
+	txs, err := db.TransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
+	if err != nil && !db.NoRows(err) {
+		logger.WithError(err).Error("error getting transactions by hashes")
+		return nil, err
+	}
+	return txs, nil
+}
+
 // Tick triggers the system to update itself with any new data available.
 func (sys *System) Tick(ctx context.Context) {
 	sys.Init()
@@ -352,6 +375,14 @@ func (sys *System) Tick(ctx context.Context) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return
 		}
+
+		// In Tick we only check txs in a queue so those which did not have results before Tick
+		// so we include the last 5 mins of ledgers also: 60.
+		historyTxs, err := sys.getHistoricalTXs(db, ctx, pending, 60)
+		if err != nil {
+			return
+		}
+		txs = append(txs, historyTxs...)
 
 		txMap := make(map[string]history.Transaction, len(txs))
 		for _, tx := range txs {

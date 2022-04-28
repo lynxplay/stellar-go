@@ -390,7 +390,7 @@ func (suite *SystemTestSuite) TestTick_Deadlock() {
 }
 
 // Test that Tick finishes any available transactions,
-func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
+func (suite *SystemTestSuite) TestTick_FinishesResultTransactions() {
 	l := make(chan Result, 1)
 	suite.system.Pending.Add(suite.ctx, suite.successTx.Transaction.TransactionHash, l)
 
@@ -400,6 +400,8 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	}).Return(nil).Once()
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
+		Return([]history.Transaction{}, nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, mock.Anything).
 		Return([]history.Transaction{}, nil).Once()
 	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
@@ -415,6 +417,30 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	}).Return(nil).Once()
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
+		Return([]history.Transaction{suite.successTx.Transaction}, nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, mock.Anything).
+		Return([]history.Transaction{}, nil).Once()
+	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
+		Return(int64(0), nil).Once()
+
+	suite.system.Tick(suite.ctx)
+
+	assert.Equal(suite.T(), 1, len(l))
+	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
+}
+
+func (suite *SystemTestSuite) TestTick_FinishesHistoryTransactions() {
+	l := make(chan Result, 1)
+	suite.system.Pending.Add(suite.ctx, suite.successTx.Transaction.TransactionHash, l)
+
+	suite.db.On("BeginTx", &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  false,
+	}).Return(nil).Once()
+	suite.db.On("Commit").Return(nil).Once()
+	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
+		Return([]history.Transaction{}, nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, mock.Anything).
 		Return([]history.Transaction{suite.successTx.Transaction}, nil).Once()
 	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
@@ -470,6 +496,8 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{innerHash}).
 		Return([]history.Transaction{feeBumpTx.Transaction}, nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{innerHash}, mock.Anything).
+		Return([]history.Transaction{}, nil).Once()
 	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
@@ -496,6 +524,8 @@ func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 	suite.db.On("Commit").Return(nil).Once()
 	suite.db.MockQTxSubmissionResult.On("GetTxSubmissionResults", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}).
 		Return([]history.Transaction{suite.successTx.Transaction}, nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, mock.Anything).
+		Return([]history.Transaction{}, nil).Once()
 	suite.db.MockQTxSubmissionResult.On("DeleteTxSubmissionResultsOlderThan", suite.ctx, uint64(300)).
 		Return(int64(0), nil).Once()
 
