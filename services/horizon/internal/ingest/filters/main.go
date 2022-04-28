@@ -41,10 +41,6 @@ func NewFilters() Filters {
 // Provide list of the active filters. Optimize performance by caching the list, only
 // rebuild the list on expiration time interval. Method is NOT thread-safe.
 func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
-	// TODO, should we put a mutex/sync on this to be safe? currently not re-entrant,
-	// bound to instance of filtersCache, looks like it is only invoked serially per ledger from a processor,
-	// thinking can safely avoid the sync overhead?
-
 	// only attempt to refresh filter config cache state at configured interval limit
 	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + FilterConfigCheckIntervalSeconds) {
 		return f.convertCacheToList()

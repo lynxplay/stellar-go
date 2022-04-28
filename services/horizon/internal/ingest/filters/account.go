@@ -46,7 +46,6 @@ func (f *accountFilter) FilterTransaction(ctx context.Context, transaction inges
 		return true, nil
 	}
 
-	// TODO: what is the sequence used for?
 	participants, err := processors.ParticipantsForTransaction(0, transaction)
 	if err != nil {
 		return false, err
