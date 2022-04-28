@@ -70,10 +70,6 @@ func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 				asset := operation.Body.ChangeTrustOp.Line.ToAsset()
 				allowed = f.assetMatchedFilter(&asset)
 			}
-		case xdr.OperationTypeClaimClaimableBalance:
-			// TODO, try to get asset for claimable balance id
-		case xdr.OperationTypeClawbackClaimableBalance:
-			// TODO, try to get asset for claimable balance id
 		case xdr.OperationTypeManageSellOffer:
 			if f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Selling) {
 				allowed = true
