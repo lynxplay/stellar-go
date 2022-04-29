@@ -75,6 +75,9 @@ func (q *Q) GetTxSubmissionResults(ctx context.Context, hashes []string) ([]Tran
 	txs := make([]Transaction, len(result))
 	for i := 0; i < len(result); i++ {
 		err = json.Unmarshal([]byte(result[i]), &txs[i])
+		if err != nil {
+			return nil, err
+		}
 	}
 	return txs, err
 }

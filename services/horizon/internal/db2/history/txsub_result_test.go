@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -27,6 +28,31 @@ func TestInitIdempotent(t *testing.T) {
 
 	// nth invocations on same hash, should be idempotent, if already a row, no-op, no error
 	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString(), ""))
+}
+
+func TestInvalidSerializedTX(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+	hash := xdr.Hash{0x1, 0x2, 0x3, 0x4}
+
+	// first invocation, creates row
+	ctx := context.Background()
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hash.HexString(), ""))
+
+	// put invalid encoded bytes for tx result
+	sql := sq.Update(txSubResultTableName).
+		Set(txSubResultColumnName, "garbage").
+		Where(sq.Eq{txSubResultHashColumnName: hash.HexString()})
+	result, err := q.Exec(ctx, sql)
+	rows, _ := result.RowsAffected()
+	tt.Assert.Equal(rows, int64(1))
+	tt.Assert.NoError(err)
+
+	// should get err when retrieving due to invalid bytes
+	_, err = q.GetTxSubmissionResults(ctx, []string{hash.HexString()})
+	tt.Assert.Error(err)
 }
 
 func TestTxSubResult(t *testing.T) {
