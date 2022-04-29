@@ -12,7 +12,7 @@ import (
 var (
 
 	// the filter config cache will be checked against latest from db at most once per each of this interval,
-	FilterConfigCheckIntervalSeconds int64 = 10
+	FilterConfigCheckIntervalSeconds time.Duration = 10 * time.Second
 )
 
 var (
@@ -42,7 +42,7 @@ func NewFilters() Filters {
 // rebuild the list on expiration time interval. Method is NOT thread-safe.
 func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
 	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + FilterConfigCheckIntervalSeconds) {
+	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + int64(FilterConfigCheckIntervalSeconds.Seconds())) {
 		return f.convertCacheToList()
 	}
 

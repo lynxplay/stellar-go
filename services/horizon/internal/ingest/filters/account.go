@@ -25,7 +25,6 @@ func NewAccountFilter() AccountFilter {
 	}
 }
 
-// TODO:(fons) this code should probably be generic for all filters
 func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.AccountFilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp

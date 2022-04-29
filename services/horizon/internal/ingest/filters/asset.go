@@ -59,53 +59,50 @@ func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 	}
 
 	for _, operation := range tx.Tx.Operations {
-		var allowed = false
 		switch operation.Body.Type {
 		case xdr.OperationTypeChangeTrust:
 			if pool, ok := operation.Body.ChangeTrustOp.Line.GetLiquidityPool(); ok {
 				if f.assetMatchedFilter(&pool.ConstantProduct.AssetA) || f.assetMatchedFilter(&pool.ConstantProduct.AssetB) {
-					allowed = true
+					return true, nil
 				}
 			} else {
 				asset := operation.Body.ChangeTrustOp.Line.ToAsset()
-				allowed = f.assetMatchedFilter(&asset)
+				if f.assetMatchedFilter(&asset) {
+					return true, nil
+				}
 			}
 		case xdr.OperationTypeManageSellOffer:
 			if f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Selling) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypeManageBuyOffer:
 			if f.assetMatchedFilter(&operation.Body.ManageBuyOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageBuyOfferOp.Selling) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypeCreateClaimableBalance:
 			if f.assetMatchedFilter(&operation.Body.CreateClaimableBalanceOp.Asset) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypeCreatePassiveSellOffer:
 			if f.assetMatchedFilter(&operation.Body.CreatePassiveSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.CreatePassiveSellOfferOp.Selling) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypeClawback:
 			if f.assetMatchedFilter(&operation.Body.ClawbackOp.Asset) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypePayment:
 			if f.assetMatchedFilter(&operation.Body.PaymentOp.Asset) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypePathPaymentStrictReceive:
 			if f.assetMatchedFilter(&operation.Body.PathPaymentStrictReceiveOp.DestAsset) || f.assetMatchedFilter(&operation.Body.PathPaymentStrictReceiveOp.SendAsset) {
-				allowed = true
+				return true, nil
 			}
 		case xdr.OperationTypePathPaymentStrictSend:
 			if f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.DestAsset) || f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.SendAsset) {
-				allowed = true
+				return true, nil
 			}
-		}
-
-		if allowed {
-			return true, nil
 		}
 	}
 
