@@ -48,7 +48,11 @@ func (c *AdminClient) getIngestionFiltersURL(name string) (string, error) {
 	if c.AdminPort > 0 {
 		adminPort = c.AdminPort
 	}
-	baseURL.Host = fmt.Sprintf("%s:%d", baseURL.Hostname(), adminPort)
+	adminHost := baseURL.Hostname()
+	if len(c.AdminHost) > 0 {
+		adminHost = c.AdminHost
+	}
+	baseURL.Host = fmt.Sprintf("%s:%d", adminHost, adminPort)
 	return baseURL.String(), nil
 }
 

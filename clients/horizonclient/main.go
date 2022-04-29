@@ -153,6 +153,8 @@ type AdminClient struct {
 	// Admin port (admin requests will fail if unset)
 	AdminPort uint16
 
+	AdminHost string
+
 	// HTTP client to make requests with
 	HTTP HTTP
 
