@@ -1,7 +1,9 @@
 package integration
 
 import (
-	"fmt"
+	"bytes"
+	"encoding/base64"
+	"math"
 	"strconv"
 	"sync"
 	"testing"
@@ -9,9 +11,11 @@ import (
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -207,6 +211,8 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
+	submitPhonyOp(itest) // upgrades master account to v3
+
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()
 	currentAccountSeq, err := masterAccount.GetSequenceNumber()
@@ -224,28 +230,34 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	tt.GreaterOrEqual(signedAcctSeqTime, int64(0))
 	acctSeqTime := uint64(signedAcctSeqTime)
 	networkSeqTime := uint64(ledgers.Embedded.Records[0].ClosedAt.UTC().Unix())
+	tt.GreaterOrEqual(networkSeqTime, acctSeqTime)
 
 	// build a tx with seqnum based on master.seqNum+1 as source account
 	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
 
-	// this txsub will error because the tx preconditions require a min sequence age
-	// which has been set 10000 seconds greater than the current difference between
-	// network ledger sequence time and account sequnece time
+	// This txsub will error because the tx preconditions require a min sequence
+	// age which has been set 10000 seconds greater than the current difference
+	// between network ledger sequence time and account sequnece time.
 	txParams.Preconditions.MinSequenceNumberAge = networkSeqTime - acctSeqTime + 10000
-	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
+	tx, err := itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
 	tt.Error(err)
 
-	txParams.Preconditions.MinSequenceNumberAge = networkSeqTime - acctSeqTime - 1
-	// Now the transaction should be submitted without problems, the min sequence age
-	// is set to be one second less then the current difference between network time and account sequence time.
-	tx, err := itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
-	tt.NoError(err)
+	// Now the transaction should be submitted without problems, the min
+	// sequence age is set to be 1s more than the current difference between
+	// network time and account sequence time.
+	time.Sleep(time.Second)
+	txParams.Preconditions.MinSequenceNumberAge = 1
+	tx, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
+	itest.LogFailedTx(tx, err)
 
 	//verify roundtrip to network and back through the horizon api returns same precondition values
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
-	assert.NoError(t, err)
-	assert.EqualValues(t, txHistory.Preconditions.MinAccountSequenceAge,
-		fmt.Sprint(uint64(txParams.Preconditions.MinSequenceNumberAge)))
+	tt.NoError(err)
+
+	expected := txParams.Preconditions.MinSequenceNumberAge
+	actual, err := strconv.ParseUint(txHistory.Preconditions.MinAccountSequenceAge, 10, 64)
+	tt.NoError(err)
+	tt.Equal(expected, actual)
 }
 
 func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
@@ -285,8 +297,112 @@ func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 	assert.Equal(t, txHistory.Preconditions.MinAccountSequenceLedgerGap, txParams.Preconditions.MinSequenceNumberLedgerGap)
 }
 
-func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSequence int64) txnbuild.TransactionParams {
+// TestTransactionWithoutPreconditions ensures that Horizon doesn't break when
+// we have a PRECOND_NONE type transaction (which is not possible to submit
+// through SDKs, but is absolutely still possible).
+func TestTransactionWithoutPreconditions(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
 
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+	seqNum, err := masterAccount.GetSequenceNumber()
+	tt.NoError(err)
+
+	account := xdr.MuxedAccount{}
+	tt.NoError(account.SetEd25519Address(master.Address()))
+
+	payment := txnbuild.Payment{ // dummy op
+		Destination: master.Address(),
+		Amount:      "1000",
+		Asset:       txnbuild.NativeAsset{},
+	}
+	paymentOp, err := payment.BuildXDR()
+	tt.NoError(err)
+
+	envelope := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: account,
+				Fee:           xdr.Uint32(1000),
+				SeqNum:        xdr.SequenceNumber(seqNum + 1),
+				Operations:    []xdr.Operation{paymentOp},
+				Cond: xdr.Preconditions{
+					Type: xdr.PreconditionTypePrecondNone,
+				},
+			},
+			Signatures: nil,
+		},
+	}
+
+	// Taken from txnbuild.concatSignatures
+	h, err := network.HashTransactionInEnvelope(envelope,
+		integration.StandaloneNetworkPassphrase)
+	tt.NoError(err)
+
+	sig, err := master.SignDecorated(h[:])
+	tt.NoError(err)
+
+	// taken from txnbuild.marshallBinary
+	var txBytes bytes.Buffer
+	envelope.V1.Signatures = []xdr.DecoratedSignature{sig}
+	_, err = xdr.Marshal(&txBytes, envelope)
+	tt.NoError(err)
+	b64 := base64.StdEncoding.EncodeToString(txBytes.Bytes())
+
+	txResp, err := itest.Client().SubmitTransactionXDR(b64)
+	tt.NoError(err)
+
+	txResp2, err := itest.Client().TransactionDetail(txResp.Hash)
+	tt.NoError(err)
+	tt.Nil(txResp2.Preconditions)
+}
+
+func TestTransactionPreconditionsEdgeCases(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+
+	maxMinSeq := int64(math.MaxInt64)
+	preconditionTests := []txnbuild.Preconditions{
+		{LedgerBounds: &txnbuild.LedgerBounds{1, 0}},
+		{LedgerBounds: &txnbuild.LedgerBounds{0, math.MaxUint32}},
+		{LedgerBounds: &txnbuild.LedgerBounds{math.MaxUint32, 1}},
+		{
+			LedgerBounds: &txnbuild.LedgerBounds{math.MaxUint32, 1},
+			ExtraSigners: []string{},
+		},
+		{
+			MinSequenceNumber:          &maxMinSeq,
+			MinSequenceNumberLedgerGap: math.MaxUint32,
+			MinSequenceNumberAge:       math.MaxUint64,
+			ExtraSigners:               nil,
+		},
+	}
+
+	for _, precondition := range preconditionTests {
+		seqNum, err := masterAccount.IncrementSequenceNumber()
+		tt.NoError(err)
+
+		params := buildTXParams(master, masterAccount, seqNum)
+		precondition.TimeBounds = txnbuild.NewInfiniteTimeout()
+		params.Preconditions = precondition
+
+		// The goal here is not to check for validation or errors or responses,
+		// but rather to just make sure the edge case doesn't crash Horizon.
+		itest.SubmitTransaction(master, params)
+	}
+}
+
+func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSequence int64) txnbuild.TransactionParams {
 	return txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: masterAccount.GetAccountID(),
@@ -306,31 +422,4 @@ func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSeque
 			TimeBounds: txnbuild.NewInfiniteTimeout(),
 		},
 	}
-}
-
-func TestTransactionPreconditionsAccountV3Fields(t *testing.T) {
-	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{})
-	if itest.GetEffectiveProtocolVersion() < 19 {
-		t.Skip("Can't run with protocol < 19")
-	}
-	master := itest.Master()
-	masterAccount := itest.MasterAccount()
-
-	// Submit phony operation
-	tx := itest.MustSubmitOperations(masterAccount, master,
-		&txnbuild.Payment{
-			Destination: master.Address(),
-			Amount:      "10",
-			Asset:       txnbuild.NativeAsset{},
-		},
-	)
-
-	// refresh master account
-	account, err := itest.Client().AccountDetail(sdk.AccountRequest{AccountID: master.Address()})
-	assert.NoError(t, err)
-
-	// Check that the account response has the new AccountV3 fields
-	tt.Equal(uint32(tx.Ledger), account.SequenceLedger)
-	tt.Equal(strconv.FormatInt(tx.LedgerCloseTime.Unix(), 10), account.SequenceTime)
 }
