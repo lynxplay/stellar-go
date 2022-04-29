@@ -7,7 +7,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * New Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse.
 
-  Define filter rules through Admin API and the historical ingestion process will check the rules and only persist the ledger transactions that pass the filter rules. Iniitally, two filters and corresponding rules are possible:
+  Define filter rules through Admin API and the historical ingestion process will check the rules and only persist the ledger transactions that pass the filter rules. Initially, two filters and corresponding rules are possible:
 
   * 'whitelist by account id' ([4221](https://github.com/stellar/go/issues/4221))
   * 'whitelist by canonical asset id' ([4222](https://github.com/stellar/go/issues/4222))
