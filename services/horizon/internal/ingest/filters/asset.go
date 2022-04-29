@@ -114,11 +114,8 @@ func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 }
 
 func (f *assetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
-	var matched = false
-	if _, found := f.canonicalAssetsLookup[asset.StringCanonical()]; found {
-		matched = true
-	}
-	return matched
+	_, found := f.canonicalAssetsLookup[asset.StringCanonical()]
+	return found
 }
 
 func listToMap(list []string) map[string]struct{} {
