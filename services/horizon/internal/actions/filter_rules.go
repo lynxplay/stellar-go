@@ -43,10 +43,6 @@ func (handler FilterConfigHandler) GetAccountConfig(w http.ResponseWriter, r *ht
 
 	config, err := historyQ.GetAccountFilterConfig(r.Context())
 
-	if historyQ.NoRows(err) {
-		err = problem.NotFound
-	}
-
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
@@ -78,9 +74,6 @@ func (handler FilterConfigHandler) UpdateAccountConfig(w http.ResponseWriter, r 
 
 	config, err := historyQ.UpdateAccountFilterConfig(r.Context(), filterConfig)
 	if err != nil {
-		if historyQ.NoRows(err) {
-			err = problem.NotFound
-		}
 		problem.Render(r.Context(), w, err)
 	}
 
@@ -110,9 +103,6 @@ func (handler FilterConfigHandler) UpdateAssetConfig(w http.ResponseWriter, r *h
 
 	config, err := historyQ.UpdateAssetFilterConfig(r.Context(), filterConfig)
 	if err != nil {
-		if historyQ.NoRows(err) {
-			err = problem.NotFound
-		}
 		problem.Render(r.Context(), w, err)
 	}
 
@@ -137,10 +127,7 @@ func (handler FilterConfigHandler) accountFilterResource(r *http.Request) (hProt
 	var filterRequest hProtocol.AccountFilterConfig
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&filterRequest); err != nil {
-		p := problem.BadRequest
-		p.Extras = map[string]interface{}{
-			"reason": fmt.Sprintf("invalid json for account filter config %v", err.Error()),
-		}
+		p := problem.NewProblemWithInvalidField(problem.BadRequest, "reason", fmt.Errorf("invalid json for account filter config %v", err.Error()))
 		return hProtocol.AccountFilterConfig{}, p
 	}
 	return filterRequest, nil
