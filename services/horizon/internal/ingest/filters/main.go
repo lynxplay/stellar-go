@@ -11,8 +11,9 @@ import (
 
 var (
 
-	// the filter config cache will be checked against latest from db at most once per each of this interval,
-	FilterConfigCheckIntervalSeconds time.Duration = 10 * time.Second
+	// the filter config cache will be checked against latest from db at most once per each of this interval.
+	//lint:ignore ST1011, don't need the linter warn on literal assignment
+	FilterConfigCheckIntervalSeconds time.Duration = 100
 )
 
 var (

@@ -88,7 +88,7 @@ func TestTxSubResult(t *testing.T) {
 			TxFeeMeta:        "AAAAAA==",
 			TxMeta:           "AAAAAQAAAAAAAAAA",
 			Signatures:       []string{},
-			ExtraSigners:     []string{},
+			ExtraSigners:     nil,
 			InnerSignatures:  nil,
 			MemoType:         "none",
 			Memo:             null.NewString("", false),
