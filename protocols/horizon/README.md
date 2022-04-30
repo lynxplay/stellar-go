@@ -18,6 +18,7 @@ For each new version we will only track changes from the previous version.
 #### Changes
 
 * Operations responses may include a `transaction` field which represents the transaction that created the operation.
+* Operations expose common base data through the `BaseData` method on the `Operation` interface.
 
 ### 0.15.0
 

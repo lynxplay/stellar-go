@@ -351,6 +351,7 @@ type Operation interface {
 	GetID() string
 	GetTransactionHash() string
 	IsTransactionSuccessful() bool
+	BaseData() Base
 }
 
 // GetType returns the type of operation
@@ -373,6 +374,13 @@ func (base Base) GetTransactionHash() string {
 
 func (base Base) IsTransactionSuccessful() bool {
 	return base.TransactionSuccessful
+}
+
+// BaseData returns the part of an operations data that may be
+// found in any operation type, such as the operation id or the
+// sponsor.
+func (base Base) BaseData() Base {
+	return base
 }
 
 // OperationsPage is the json resource representing a page of operations.
