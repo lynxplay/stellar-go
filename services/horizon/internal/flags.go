@@ -200,11 +200,11 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        "enable-ingestion-filtering",
+			Name:        "exp-enable-ingestion-filtering",
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Required:    false,
-			Usage:       "causes Horizon to enable Ingestion filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
+			Usage:       "causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
 			ConfigKey:   &config.EnableIngestionFiltering,
 		},
 		&support.ConfigOption{
@@ -390,7 +390,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.MaxAssetsPerPathRequest,
 			OptType:     types.Int,
 			FlagDefault: int(15),
-			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-recieve' endpoints",
+			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-receive' endpoints",
 		},
 		&support.ConfigOption{
 			Name:        "disable-pool-path-finding",
@@ -399,6 +399,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
+		},
+		&support.ConfigOption{
+			Name:        "disable-path-finding",
+			ConfigKey:   &config.DisablePathFinding,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "disables the path finding endpoints",
 		},
 		&support.ConfigOption{
 			Name:        "max-path-finding-requests",

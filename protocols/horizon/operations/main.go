@@ -346,12 +346,18 @@ type LiquidityPoolWithdraw struct {
 
 // Operation interface contains methods implemented by the operation types
 type Operation interface {
+	GetBase() Base
 	PagingToken() string
 	GetType() string
 	GetID() string
 	GetTransactionHash() string
 	IsTransactionSuccessful() bool
 	BaseData() Base
+}
+
+// GetBase returns the base object of operation
+func (base Base) GetBase() Base {
+	return base
 }
 
 // GetType returns the type of operation

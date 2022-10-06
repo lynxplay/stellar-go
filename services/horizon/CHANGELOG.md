@@ -3,6 +3,84 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.20.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### DB Schema Migration
+
+- Added indexes by id for claimable balance and liquidity pool id's in the respective tx/ops tables. Ingestion will stop while the migration is being applied. ([4455](https://github.com/stellar/go/pull/4477))
+
+### Changes
+
+- Orphaned rows in lookup tables (`history_accounts`, `history_claimable_balances` and `history_liquidity_pools`) are removed in small batches after each ledger if `--history-retention-count` is set. ([4518](https://github.com/stellar/go/pull/4518), [4525](https://github.com/stellar/go/pull/4525))
+- Improve restart time of Captive-Core when started with `--captive-core-use-db` flag. The solution does not work on Windows. ([4471](https://github.com/stellar/go/pull/4471))
+- Fix a bug in which state verifier would run if condition checking DB query fails. ([4523](https://github.com/stellar/go/pull/4523))
+
+## 2.19.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### Breaking Changes
+
+* Update core version to 19.3.0 ([4485](https://github.com/stellar/go/pull/4485)).
+* Pass `--console` to captive core. This is due to a breaking change in stellar-core 19.3.0 ([4487](https://github.com/stellar/go/pull/4487)).
+
+### Changes
+
+* Run postgres autovacuum on `history_trades_60000` table more frequently. ([4412](https://github.com/stellar/go/pull/4412)).
+* Change `protocols/horizon.Transaction.AccountSequence` to `int64` from `string`. ([4409](https://github.com/stellar/go/pull/4409)).
+* Add missing signer key type names. ([4429](https://github.com/stellar/go/pull/4429)).
+* Update core version to 19.2.0. ([4441](https://github.com/stellar/go/pull/4441)).
+* Add `User-Agent` header to history archive HTTP requests. ([4463](https://github.com/stellar/go/pull/4463)).
+
+### DB Schema Migration
+
+The migration makes the following schema changes:
+
+  - tunes the `history_trades_60000` table to run autovacuum more frequently. Migration should be brief, does not incur any data/runtime processing. It does not need a reingestion.
+
+## 2.18.1
+
+* Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
+* Optimize the claimable balance SQL query for best index query plan performance([4398](https://github.com/stellar/go/pull/4398))
+
+
+### DB Schema Migration
+
+The migration makes the following schema changes:
+
+  - creates new, `history_transactions_filtered_tmp` table related to enabling tx sub processing on read only, only ingest writes to the table. Deprecates, drops prior `txsub_results` table. Migration should be brief, does not incur any data/runtime processing.
+
+
+## 2.18.0
+
+* New Experimental Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse.
+
+  Define filter rules through Admin API and the historical ingestion process will check the rules and only persist the ledger transactions that pass the filter rules. Initially, two filters and corresponding rules are possible:
+
+  * 'whitelist by account id' ([4221](https://github.com/stellar/go/issues/4221))
+  * 'whitelist by canonical asset id' ([4222](https://github.com/stellar/go/issues/4222))
+
+  The filters and their configuration are optional features and must be enabled with horizon command line parameters `admin-port=4200` and `exp-enable-ingestion-filtering=true`
+
+  Once set, filter configurations and their rules are initially empty and the filters are disabled by default. To enable filters, update the configuration settings, refer to the Admin API Docs which are published on the Admin Port at http://localhost:<admin_port>/, follow details and examples for endpoints:
+  * `/ingestion/filters/account`
+  * `/ingestion/filters/asset.`
+- Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
+- Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
+- Postgres connections for non ingesting Horizon instances are now configured to timeout on long running queries / transactions ([4390](https://github.com/stellar/go/pull/4390)).
+- Added `disable-path-finding` Horizon flag to disable the path finding endpoints. This flag should be enabled on ingesting Horizon instances which do not serve HTTP traffic ([4399](https://github.com/stellar/go/pull/4399)).
+
+
+## V2.17.1
+
+- Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
+- Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
+- Postgres connections for non ingesting Horizon instances are now configured to timeout on long running queries / transactions ([4390](https://github.com/stellar/go/pull/4390)).
+- Added `disable-path-finding` Horizon flag to disable the path finding endpoints. This flag should be enabled on ingesting Horizon instances which do not serve HTTP traffic ([4399](https://github.com/stellar/go/pull/4399)).
+
+
 ## V2.17.0
 
 This is the final release after the [release candidate](v2.17.0-release-candidate), including some small additional changes:
@@ -12,19 +90,6 @@ This is the final release after the [release candidate](v2.17.0-release-candidat
   * `preconditions.ledgerbounds.max_ledger` when it's set to 0 (this means that there is no upper bound)
 
 - Timebounds within the `preconditions` object are strings containing int64 UNIX timestamps in seconds rather than formatted date-times (which was a bug) ([4361](https://github.com/stellar/go/pull/4361)).
-
-* New Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse.
-
-  Define filter rules through Admin API and the historical ingestion process will check the rules and only persist the ledger transactions that pass the filter rules. Initially, two filters and corresponding rules are possible:
-
-  * 'whitelist by account id' ([4221](https://github.com/stellar/go/issues/4221))
-  * 'whitelist by canonical asset id' ([4222](https://github.com/stellar/go/issues/4222))
-
-  The filters and their configuration are optional features and must be enabled with horizon command line parameters `admin-port=4200` and `enable-ingestion-filtering=true`
-
-  Once set, filter configurations and their rules are initially empty and the filters are disabled by default. To enable filters, update the configuration settings, refer to the Admin API Docs which are published on the Admin Port at http://localhost:<admin_port>/, follow details and examples for endpoints:
-  * `/ingestion/filters/account`
-  * `/ingestion/filters/asset.`
 
 ## V2.17.0 Release Candidate
 
